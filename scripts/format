@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Format and lint the e2b-mcp codebase
+echo "🎨 Formatting e2b-mcp codebase..."
+
+# Get the project root directory
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+echo "📁 Working directory: $PROJECT_ROOT"
+
+# Check if uv is available
+if ! command -v uv &> /dev/null; then
+    echo "❌ uv is not installed. Please install uv first: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    exit 1
+fi
+
+# Run black for code formatting
+echo "🖤 Running black..."
+uv run black .
+
+# Run ruff for linting and auto-fixes (including unsafe fixes)
+echo "🦀 Running ruff check with auto-fix (including unsafe fixes)..."
+uv run ruff check --fix --unsafe-fixes .
+
+# Run ruff for import sorting
+echo "📦 Running ruff format..."
+uv run ruff format .
+
+# Run mypy for type checking (allow errors, just report them)
+echo "🔍 Running mypy..."
+if uv run mypy e2b_mcp/; then
+    echo "✅ MyPy type checking passed!"
+else
+    echo "⚠️  MyPy found type issues (see above)"
+fi
+
+echo ""
+echo "✅ Formatting complete!"
+echo ""
+echo "💡 To run tests after formatting:"
+echo "   uv run pytest"
+echo ""
+echo "💡 To run only unit tests (fast):"
+echo "   uv run pytest -m 'not integration'" 

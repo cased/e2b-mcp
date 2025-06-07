@@ -14,63 +14,63 @@ Usage:
     export GITHUB_PERSONAL_ACCESS_TOKEN="your_token_here"
     python examples/multi_server_example.py
 """
-import os
+
 import asyncio
+import os
+
 from e2b_mcp import E2BMCPRunner
 
 
 async def main():
     """Demonstrate multi-server MCP integration."""
-    
+
     print("🚀 Multi-Server MCP Integration Example")
     print("=" * 50)
-    
+
     # Initialize E2B MCP runner
     runner = E2BMCPRunner()
-    
+
     # Configure multiple MCP servers
     servers_config = {
         "filesystem": {
             "command": "npx -y @modelcontextprotocol/server-filesystem /tmp/project",
-            "env": {}
+            "env": {},
         },
         "sqlite": {
             "command": "npx -y @modelcontextprotocol/server-sqlite --db-path /tmp/project/data.db",
-            "env": {}
-        }
+            "env": {},
+        },
     }
-    
+
     # Add GitHub server if token is available
     github_token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN") or os.getenv("KIT_GITHUB_TOKEN")
     if github_token:
         servers_config["github"] = {
             "command": "npx -y @modelcontextprotocol/server-github",
-            "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": github_token
-            }
+            "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": github_token},
         }
         print("✅ GitHub integration enabled")
     else:
         print("⚠️  GitHub integration disabled (no token found)")
-    
+
     # Add all servers
     for server_name, config in servers_config.items():
         runner.add_server_from_dict(server_name, config)
         print(f"📡 Added {server_name} server")
-    
+
     try:
         # Discover tools from all servers
         print("\n🔧 Discovering tools from all servers...")
         all_tools = {}
-        
-        for server_name in servers_config.keys():
+
+        for server_name in servers_config:
             try:
                 tools = await runner.discover_tools(server_name)
                 all_tools[server_name] = tools
                 print(f"✅ {server_name}: {len(tools)} tools")
             except Exception as e:
                 print(f"❌ {server_name}: Failed to discover tools - {e}")
-        
+
         # Show tool summary
         print("\n📚 Available Tools Summary:")
         for server_name, tools in all_tools.items():
@@ -79,24 +79,24 @@ async def main():
                 print(f"    • {tool.name}")
             if len(tools) > 3:
                 print(f"    ... and {len(tools) - 3} more")
-        
+
         # Example workflow: Create a project analysis system
         print("\n🎯 Example Workflow: Project Analysis System")
         print("Creating a system that analyzes GitHub repositories and stores results locally")
-        
+
         # Step 1: Create project structure with filesystem
         if "filesystem" in all_tools:
             print("\n📁 Step 1: Create project structure")
             try:
                 # Create directories
-                await runner.execute_tool("filesystem", "create_directory", {
-                    "path": "/tmp/project"
-                })
-                await runner.execute_tool("filesystem", "create_directory", {
-                    "path": "/tmp/project/analysis"
-                })
+                await runner.execute_tool(
+                    "filesystem", "create_directory", {"path": "/tmp/project"}
+                )
+                await runner.execute_tool(
+                    "filesystem", "create_directory", {"path": "/tmp/project/analysis"}
+                )
                 print("✅ Created project directories")
-                
+
                 # Create analysis script
                 script_content = '''#!/usr/bin/env python3
 """
@@ -108,7 +108,9 @@ def analyze_repository(repo_name, language_stats):
     """Analyze repository statistics."""
     analysis = {
         "repository": repo_name,
-        "primary_language": max(language_stats, key=language_stats.get) if language_stats else "Unknown",
+        "primary_language": (
+            max(language_stats, key=language_stats.get) if language_stats else "Unknown"
+        ),
         "total_languages": len(language_stats),
         "analysis_type": "automated"
     }
@@ -117,22 +119,26 @@ def analyze_repository(repo_name, language_stats):
 if __name__ == "__main__":
     print("Repository analysis tools loaded!")
 '''
-                await runner.execute_tool("filesystem", "write_file", {
-                    "path": "/tmp/project/analysis/analyzer.py",
-                    "content": script_content
-                })
+                await runner.execute_tool(
+                    "filesystem",
+                    "write_file",
+                    {"path": "/tmp/project/analysis/analyzer.py", "content": script_content},
+                )
                 print("✅ Created analysis script")
-                
+
             except Exception as e:
                 print(f"❌ Filesystem operations failed: {e}")
-        
+
         # Step 2: Initialize database with SQLite
         if "sqlite" in all_tools:
             print("\n🗄️  Step 2: Initialize analysis database")
             try:
                 # Create analysis table
-                await runner.execute_tool("sqlite", "execute", {
-                    "query": """
+                await runner.execute_tool(
+                    "sqlite",
+                    "execute",
+                    {
+                        "query": """
                     CREATE TABLE IF NOT EXISTS repository_analysis (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         repo_name TEXT NOT NULL,
@@ -142,67 +148,75 @@ if __name__ == "__main__":
                         analysis_date DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
                     """
-                })
+                    },
+                )
                 print("✅ Created analysis database table")
-                
+
             except Exception as e:
                 print(f"❌ Database operations failed: {e}")
-        
+
         # Step 3: Fetch repository data from GitHub
         if "github" in all_tools:
             print("\n🔍 Step 3: Fetch repository data from GitHub")
             try:
                 # Search for interesting repositories
-                search_result = await runner.execute_tool("github", "search_repositories", {
-                    "query": "machine learning python stars:>1000",
-                    "per_page": 2
-                })
-                
+                search_result = await runner.execute_tool(
+                    "github",
+                    "search_repositories",
+                    {"query": "machine learning python stars:>1000", "per_page": 2},
+                )
+
                 if "result" in search_result:
                     repos = search_result["result"].get("repositories", [])
                     print(f"✅ Found {len(repos)} repositories")
-                    
+
                     # Store analysis in database
                     if "sqlite" in all_tools:
                         for repo in repos[:2]:  # Analyze first 2 repos
                             repo_name = repo.get("full_name", "unknown")
                             language = repo.get("language", "Unknown")
                             stars = repo.get("stargazers_count", 0)
-                            
-                            await runner.execute_tool("sqlite", "execute", {
-                                "query": """
-                                INSERT INTO repository_analysis 
+
+                            await runner.execute_tool(
+                                "sqlite",
+                                "execute",
+                                {
+                                    "query": """
+                                INSERT INTO repository_analysis
                                 (repo_name, primary_language, total_languages, stars)
                                 VALUES (?, ?, ?, ?)
                                 """,
-                                "params": [repo_name, language, 1, stars]
-                            })
+                                    "params": [repo_name, language, 1, stars],
+                                },
+                            )
                             print(f"  📊 Analyzed: {repo_name} ({language}, {stars} stars)")
                 else:
                     print(f"⚠️  Unexpected GitHub response: {search_result}")
-                    
+
             except Exception as e:
                 print(f"❌ GitHub operations failed: {e}")
-        
+
         # Step 4: Generate analysis report
         print("\n📊 Step 4: Generate analysis report")
-        
+
         # Query database for results
         if "sqlite" in all_tools:
             try:
-                query_result = await runner.execute_tool("sqlite", "query", {
-                    "query": "SELECT * FROM repository_analysis ORDER BY stars DESC"
-                })
-                
+                query_result = await runner.execute_tool(
+                    "sqlite",
+                    "query",
+                    {"query": "SELECT * FROM repository_analysis ORDER BY stars DESC"},
+                )
+
                 if "result" in query_result:
                     rows = query_result["result"].get("rows", [])
                     print("🏆 Analysis Results:")
                     for row in rows:
                         print(f"  • {row[1]} - {row[2]} language, {row[4]} stars")
-                
+
             except Exception as e:
                 print(f"❌ Database query failed: {e}")
-        
+
         # Save report to filesystem
         if "filesystem" in all_tools:
             try:
@@ -211,7 +225,7 @@ if __name__ == "__main__":
 Generated by e2b-mcp multi-server integration
 
 ## Servers Used:
-{', '.join(all_tools.keys())}
+{", ".join(all_tools.keys())}
 
 ## Analysis Summary:
 - Servers integrated: {len(all_tools)}
@@ -227,28 +241,30 @@ Generated by e2b-mcp multi-server integration
 This demonstrates how e2b-mcp can orchestrate multiple MCP servers
 to create comprehensive automation workflows.
 """
-                
-                await runner.execute_tool("filesystem", "write_file", {
-                    "path": "/tmp/project/analysis_report.md",
-                    "content": report_content
-                })
+
+                await runner.execute_tool(
+                    "filesystem",
+                    "write_file",
+                    {"path": "/tmp/project/analysis_report.md", "content": report_content},
+                )
                 print("✅ Generated analysis report")
-                
+
             except Exception as e:
                 print(f"❌ Report generation failed: {e}")
-        
+
         print("\n🎉 Multi-server integration example completed successfully!")
         print("\n💡 This example showed how to:")
         print("  ✅ Integrate multiple MCP servers simultaneously")
         print("  ✅ Pass data between different servers")
         print("  ✅ Create comprehensive automation workflows")
         print("  ✅ Combine local operations with external APIs")
-        
+
     except Exception as e:
         print(f"❌ Example failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

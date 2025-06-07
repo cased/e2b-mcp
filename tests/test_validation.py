@@ -7,8 +7,10 @@ This module tests all the new validation features including:
 - Error handling and context
 - Input sanitization
 """
+
 import pytest
-from e2b_mcp import E2BMCPRunner, ServerConfig, Tool, MCPError
+
+from e2b_mcp import E2BMCPRunner, MCPError, ServerConfig, Tool
 
 
 class TestServerConfigValidation:
@@ -18,9 +20,7 @@ class TestServerConfigValidation:
         """Test creating valid server configurations."""
         # Basic valid config
         config = ServerConfig(
-            name="test_server",
-            command="python test.py",
-            description="Test server"
+            name="test_server", command="python test.py", description="Test server"
         )
         assert config.name == "test_server"
         assert config.command == "python test.py"
@@ -33,7 +33,7 @@ class TestServerConfigValidation:
             package="test-package",
             description="Full test server",
             timeout_minutes=15,
-            env={"DEBUG": "1", "API_KEY": "test"}
+            env={"DEBUG": "1", "API_KEY": "test"},
         )
         assert config_full.package == "test-package"
         assert config_full.timeout_minutes == 15
@@ -72,7 +72,7 @@ class TestServerConfigValidation:
             "server;",
             "server:",
             "server'",
-            "server\"",
+            'server"',
             "server<",
             "server>",
             "server,",
@@ -90,7 +90,7 @@ class TestServerConfigValidation:
             "server",
             "server1",
             "server_1",
-            "server-1", 
+            "server-1",
             "test_server",
             "test-server",
             "MyServer",
@@ -157,7 +157,7 @@ class TestServerConfigValidation:
             "package;",
             "package:",
             "package'",
-            "package\"",
+            'package"',
             "package<",
             "package>",
             "package,",
@@ -167,11 +167,7 @@ class TestServerConfigValidation:
 
         for invalid_package in invalid_packages:
             with pytest.raises(ValueError, match="Package name must contain only alphanumeric"):
-                ServerConfig(
-                    name="test", 
-                    command="python test.py", 
-                    package=invalid_package
-                )
+                ServerConfig(name="test", command="python test.py", package=invalid_package)
 
     def test_valid_package_names(self):
         """Test valid package name formats."""
@@ -193,11 +189,7 @@ class TestServerConfigValidation:
         ]
 
         for valid_package in valid_packages:
-            config = ServerConfig(
-                name="test", 
-                command="python test.py", 
-                package=valid_package
-            )
+            config = ServerConfig(name="test", command="python test.py", package=valid_package)
             assert config.package == valid_package
 
     def test_from_dict_validation(self):
@@ -208,7 +200,7 @@ class TestServerConfigValidation:
             "package": "test-package",
             "description": "Test",
             "timeout_minutes": 5,
-            "env": {"TEST": "1"}
+            "env": {"TEST": "1"},
         }
         config = ServerConfig.from_dict("test", data)
         assert config.name == "test"
@@ -234,18 +226,12 @@ class TestServerConfigValidation:
         assert config_no_pkg.get_display_name() == "test"
 
         # Config with package
-        config_with_pkg = ServerConfig(
-            name="test", 
-            command="python test.py", 
-            package="my-package"
-        )
+        config_with_pkg = ServerConfig(name="test", command="python test.py", package="my-package")
         assert config_with_pkg.is_package_required()
 
         # Config with description
         config_with_desc = ServerConfig(
-            name="test",
-            command="python test.py",
-            description="My awesome server"
+            name="test", command="python test.py", description="My awesome server"
         )
         assert config_with_desc.get_display_name() == "My awesome server"
 
@@ -253,7 +239,7 @@ class TestServerConfigValidation:
         config_empty_pkg = ServerConfig(
             name="test",
             command="python test.py",
-            package=""  # Empty string instead of whitespace
+            package="",  # Empty string instead of whitespace
         )
         assert not config_empty_pkg.is_package_required()
 
@@ -275,15 +261,15 @@ class TestToolValidation:
             "type": "object",
             "properties": {
                 "param1": {"type": "string", "description": "First parameter"},
-                "param2": {"type": "integer", "description": "Second parameter"}
+                "param2": {"type": "integer", "description": "Second parameter"},
             },
-            "required": ["param1"]
+            "required": ["param1"],
         }
         tool_with_schema = Tool(
             name="complex_tool",
             description="Complex tool",
             input_schema=schema,
-            server_name="test_server"
+            server_name="test_server",
         )
         assert tool_with_schema.input_schema == schema
         assert tool_with_schema.server_name == "test_server"
@@ -308,12 +294,7 @@ class TestToolValidation:
         mcp_data = {
             "name": "test_tool",
             "description": "Test tool from MCP",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "param": {"type": "string"}
-                }
-            }
+            "inputSchema": {"type": "object", "properties": {"param": {"type": "string"}}},
         }
         tool = Tool.from_mcp_tool(mcp_data, "test_server")
         assert tool.name == "test_tool"
@@ -335,26 +316,26 @@ class TestToolValidation:
             "properties": {
                 "required_param": {"type": "string", "description": "Required parameter"},
                 "optional_param": {"type": "integer", "description": "Optional parameter"},
-                "another_required": {"type": "boolean", "description": "Another required"}
+                "another_required": {"type": "boolean", "description": "Another required"},
             },
-            "required": ["required_param", "another_required"]
+            "required": ["required_param", "another_required"],
         }
-        
+
         tool = Tool(name="test", description="Test", input_schema=schema)
-        
+
         # Test required parameters
         required = tool.get_required_parameters()
         assert set(required) == {"required_param", "another_required"}
-        
+
         # Test optional parameters
         optional = tool.get_optional_parameters()
         assert set(optional) == {"optional_param"}
-        
+
         # Test parameter info
         param_info = tool.get_parameter_info("required_param")
         assert param_info["type"] == "string"
         assert param_info["description"] == "Required parameter"
-        
+
         # Non-existent parameter
         assert tool.get_parameter_info("nonexistent") is None
 
@@ -367,57 +348,53 @@ class TestToolValidation:
                 "age": {"type": "integer", "description": "Age parameter"},
                 "active": {"type": "boolean", "description": "Active parameter"},
                 "tags": {"type": "array", "description": "Tags parameter"},
-                "config": {"type": "object", "description": "Config parameter"}
+                "config": {"type": "object", "description": "Config parameter"},
             },
-            "required": ["name", "age"]
+            "required": ["name", "age"],
         }
-        
+
         tool = Tool(name="test", description="Test", input_schema=schema)
-        
+
         # Valid parameters
         valid_params = {"name": "test", "age": 25, "active": True}
         errors = tool.validate_parameters(valid_params)
         assert errors == []
-        
+
         # Missing required parameter
         missing_required = {"name": "test"}  # missing age
         errors = tool.validate_parameters(missing_required)
         assert len(errors) == 1
         assert "Missing required parameter: age" in errors
-        
+
         # Wrong type
         wrong_type = {"name": "test", "age": "not an integer"}
         errors = tool.validate_parameters(wrong_type)
         assert len(errors) == 1
         assert "should be of type integer" in errors[0]
-        
+
         # Multiple errors
         multiple_errors = {"age": "not an integer"}  # missing name, wrong type
         errors = tool.validate_parameters(multiple_errors)
         assert len(errors) == 2
-        
+
         # Valid with all types
         all_types = {
             "name": "test",
             "age": 25,
             "active": True,
             "tags": ["tag1", "tag2"],
-            "config": {"key": "value"}
+            "config": {"key": "value"},
         }
         errors = tool.validate_parameters(all_types)
         assert errors == []
 
     def test_tool_utility_methods(self):
         """Test tool utility methods."""
-        tool = Tool(
-            name="test_tool",
-            description="Test tool",
-            server_name="test_server"
-        )
-        
+        tool = Tool(name="test_tool", description="Test tool", server_name="test_server")
+
         # Full name
         assert tool.get_full_name() == "test_server.test_tool"
-        
+
         # Tool without server
         tool_no_server = Tool(name="tool", description="Test")
         assert tool_no_server.get_full_name() == "tool"
@@ -445,11 +422,7 @@ class TestMCPErrorHandling:
         assert error_with_tool.tool_name == "test_tool"
 
         # Error with both contexts
-        error_with_both = MCPError(
-            "Full error", 
-            server_name="test_server", 
-            tool_name="test_tool"
-        )
+        error_with_both = MCPError("Full error", server_name="test_server", tool_name="test_tool")
         error_str = str(error_with_both)
         assert "server=test_server" in error_str
         assert "tool=test_tool" in error_str
@@ -460,7 +433,7 @@ class TestMCPErrorHandling:
         """Test that MCPError properly inherits from Exception."""
         error = MCPError("Test error")
         assert isinstance(error, Exception)
-        
+
         # Can be caught as Exception
         try:
             raise MCPError("Test")
@@ -479,10 +452,11 @@ class TestRunnerValidation:
 
         # No API key should raise error
         import os
+
         original_env = os.environ.get("E2B_API_KEY")
         if "E2B_API_KEY" in os.environ:
             del os.environ["E2B_API_KEY"]
-        
+
         try:
             with pytest.raises(ValueError, match="E2B_API_KEY is required"):
                 E2BMCPRunner()
@@ -493,30 +467,27 @@ class TestRunnerValidation:
     def test_bulk_server_configuration(self):
         """Test bulk server configuration."""
         runner = E2BMCPRunner(api_key="test_key")
-        
+
         configs = {
-            "server1": {
-                "command": "python server1.py",
-                "description": "First server"
-            },
+            "server1": {"command": "python server1.py", "description": "First server"},
             "server2": {
                 "command": "python server2.py",
                 "package": "test-package",
-                "timeout_minutes": 15
-            }
+                "timeout_minutes": 15,
+            },
         }
-        
+
         runner.add_servers(configs)
-        
+
         assert len(runner.list_servers()) == 2
         assert "server1" in runner.list_servers()
         assert "server2" in runner.list_servers()
-        
+
         # Check individual configs
         config1 = runner.get_server_config("server1")
         assert config1.command == "python server1.py"
         assert config1.description == "First server"
-        
+
         config2 = runner.get_server_config("server2")
         assert config2.package == "test-package"
         assert config2.timeout_minutes == 15
@@ -524,17 +495,17 @@ class TestRunnerValidation:
     def test_server_info_method(self):
         """Test get_server_info method."""
         runner = E2BMCPRunner(api_key="test_key")
-        
+
         config = ServerConfig(
             name="test_server",
             command="python test.py",
             package="test-package",
             description="Test server",
             timeout_minutes=20,
-            env={"DEBUG": "1", "API_KEY": "test"}
+            env={"DEBUG": "1", "API_KEY": "test"},
         )
         runner.add_server(config)
-        
+
         info = runner.get_server_info("test_server")
         assert info is not None
         assert info["name"] == "test_server"
@@ -545,14 +516,14 @@ class TestRunnerValidation:
         assert info["package_required"] is True
         assert info["display_name"] == "Test server"
         assert set(info["env_vars"]) == {"DEBUG", "API_KEY"}
-        
+
         # Non-existent server
         assert runner.get_server_info("nonexistent") is None
 
     def test_session_management_methods(self):
         """Test session management utility methods."""
         runner = E2BMCPRunner(api_key="test_key")
-        
+
         # Initially no sessions
         assert runner.get_active_session_count() == 0
-        assert runner.list_active_sessions() == [] 
+        assert runner.list_active_sessions() == []
