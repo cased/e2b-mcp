@@ -1,8 +1,10 @@
 """
 Basic tests for e2b-mcp package.
 """
+
 import pytest
-from e2b_mcp import E2BMCPRunner, ServerConfig, Tool, MCPError
+
+from e2b_mcp import E2BMCPRunner, MCPError, ServerConfig, Tool
 
 
 class TestServerConfig:
@@ -15,7 +17,7 @@ class TestServerConfig:
             command="python test.py",
             package="test-package",
             description="Test server",
-            timeout_minutes=15
+            timeout_minutes=15,
         )
 
         assert config.name == "test"
@@ -31,7 +33,7 @@ class TestServerConfig:
             "package": "test-server-package",
             "description": "Test MCP server",
             "timeout_minutes": 20,
-            "env": {"DEBUG": "1"}
+            "env": {"DEBUG": "1"},
         }
 
         config = ServerConfig.from_dict("test", data)
@@ -45,11 +47,7 @@ class TestServerConfig:
 
     def test_to_dict(self):
         """Test converting ServerConfig to dictionary."""
-        config = ServerConfig(
-            name="test",
-            command="python test.py",
-            description="Test server"
-        )
+        config = ServerConfig(name="test", command="python test.py", description="Test server")
 
         data = config.to_dict()
 
@@ -69,7 +67,7 @@ class TestTool:
             name="test_tool",
             description="A test tool",
             input_schema={"type": "object"},
-            server_name="test_server"
+            server_name="test_server",
         )
 
         assert tool.name == "test_tool"
@@ -82,12 +80,7 @@ class TestTool:
         tool_data = {
             "name": "read_file",
             "description": "Read a file",
-            "inputSchema": {
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string"}
-                }
-            }
+            "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}}},
         }
 
         tool = Tool.from_mcp_tool(tool_data, "filesystem")
@@ -127,10 +120,9 @@ class TestE2BMCPRunner:
         """Test adding server from dictionary."""
         runner = E2BMCPRunner(api_key="test")
 
-        runner.add_server_from_dict("test", {
-            "command": "python test.py",
-            "description": "Test server"
-        })
+        runner.add_server_from_dict(
+            "test", {"command": "python test.py", "description": "Test server"}
+        )
 
         assert "test" in runner.server_configs
         config = runner.server_configs["test"]

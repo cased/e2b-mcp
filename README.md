@@ -6,19 +6,44 @@ Run [MCP (Model Context Protocol)](https://github.com/modelcontextprotocol) serv
 
 E2B MCP provides a simple way to execute MCP servers in isolated cloud environments, enabling safe execution of untrusted tools and code. Instead of running MCP servers directly on your host system, they run inside secure E2B sandboxes with automatic resource management and cleanup.
 
+## Use Cases
+
+E2B MCP enables powerful scenarios by running MCP servers on behalf of users in secure environments:
+
+### **AI Agent Platforms**
+- **Safe Tool Execution**: Let AI agents use file operations, git commands, and web APIs without compromising your infrastructure
+- **User-Specific Sandboxes**: Run MCP servers with each user's credentials and permissions in isolated environments  
+- **Dynamic Tool Discovery**: Discover and provision new capabilities for agents on-demand
+
+### **SaaS Applications**
+- **Multi-Tenant Tool Execution**: Safely execute user-requested operations (file processing, data analysis) in dedicated sandboxes
+- **API Gateway for MCP**: Expose MCP tools as REST endpoints with built-in security and isolation
+- **Serverless MCP**: Scale MCP server instances based on demand without infrastructure management
+
+### **Developer Tools & IDEs**
+- **Code Execution Environments**: Provide secure code execution for online IDEs and coding platforms
+- **Plugin Sandboxing**: Run untrusted MCP plugins safely without affecting the host environment  
+- **CI/CD Integration**: Execute build/test tools in isolated environments with controlled access
+
+### **Enterprise Solutions**
+- **Compliance & Security**: Meet security requirements by isolating all tool execution
+- **Customer Onboarding**: Let customers try tools and integrations safely before deployment
+- **Managed AI Services**: Offer AI capabilities to customers without exposing backend systems
+
 ## Features
 
-- **Secure Execution**: Run MCP servers in isolated E2B sandboxes
-- **Simple API**: Clean, intuitive interface for managing MCP servers
-- **Tool Discovery**: Automatically discover tools from MCP servers
-- **Async/Sync Support**: Both async and synchronous execution modes
-- **Auto Cleanup**: Automatic sandbox and resource management
-- **Package Management**: Automatic installation of MCP server dependencies
+- ** Secure Execution**: Run MCP servers in isolated E2B sandboxes
+- ** CLI & API**: Both command-line interface and Python API
+- ** Tool Discovery**: Automatically discover tools from MCP servers
+- ** Async/Sync Support**: Both async and synchronous execution modes
+- ** Auto Cleanup**: Automatic sandbox and resource management
+- ** Package Management**: Automatic installation of MCP server dependencies
+- ** Multi-Language**: Use from any language via CLI or build language-specific wrappers
 
 ## Installation
 
 ```bash
-pip install e2b-mcp
+uv pip install e2b-mcp
 ```
 
 ## Prerequisites
@@ -32,6 +57,28 @@ export E2B_API_KEY="your_api_key_here"
 
 ## Quick Start
 
+### CLI Usage
+
+```bash
+# Add a GitHub MCP server
+e2b-mcp server add github \
+  --command "npx -y @modelcontextprotocol/server-github" \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=your_token
+
+# Discover available tools
+e2b-mcp tools list github
+
+# Execute a tool
+e2b-mcp tools execute github search_repositories \
+  --params '{"query": "python", "per_page": 5}'
+
+# Quick one-shot execution (no config save)
+e2b-mcp quick "npx -y @modelcontextprotocol/server-filesystem /tmp" \
+  list_directory --param path=/tmp
+```
+
+### Python API
+
 ```python
 import asyncio
 from e2b_mcp import E2BMCPRunner, ServerConfig
@@ -43,26 +90,118 @@ async def main():
     # Add MCP server
     runner.add_server(ServerConfig(
         name="filesystem",
-        command="python -m mcp_server_filesystem --stdio",
-        package="mcp-server-filesystem",
+        command="npx -y @modelcontextprotocol/server-filesystem /tmp",
         description="File system operations"
     ))
 
-    # Discover tools by passing the server name
+    # Discover tools
     tools = await runner.discover_tools("filesystem")
     print(f"Found {len(tools)} tools")
 
     # Execute a tool
     result = await runner.execute_tool(
         "filesystem",
-        "read_file",
-        {"path": "/tmp/example.txt"}
+        "write_file",
+        {"path": "/tmp/example.txt", "content": "Hello World!"}
     )
     print(result)
 
 # Run async code
 asyncio.run(main())
 ```
+
+## 📖 CLI Documentation
+
+### Server Management
+
+```bash
+# Add a new MCP server configuration
+e2b-mcp server add <name> --command "<command>" [options]
+
+# List all configured servers
+e2b-mcp server list [--json]
+
+# Remove a server configuration  
+e2b-mcp server remove <name> [--yes]
+```
+
+**Add Server Options:**
+- `--command`: Command to run the MCP server (required)
+- `--env KEY=VALUE`: Environment variables (can be used multiple times)
+- `--package`: Python package to install
+- `--description`: Server description
+- `--timeout`: Timeout in minutes (default: 10)
+
+### Tool Operations
+
+```bash
+# List tools from a configured server
+e2b-mcp tools list <server_name> [--json]
+
+# Execute a tool
+e2b-mcp tools execute <server_name> <tool_name> [options]
+```
+
+**Execute Tool Options:**
+- `--params`: Tool parameters as JSON string
+- `--param key=value`: Individual parameters (can be used multiple times)
+- `--json`: Output raw JSON response
+
+### Quick Execute
+
+```bash
+# Execute without saving server config
+e2b-mcp quick "<command>" <tool_name> [options]
+```
+
+**Quick Execute Options:**
+- `--params`: Tool parameters as JSON string
+- `--param key=value`: Individual parameters  
+- `--env KEY=VALUE`: Environment variables
+- `--json`: Output raw JSON response
+
+### Configuration
+
+```bash
+# Show current configuration
+e2b-mcp config [--show]
+
+# Edit configuration file
+e2b-mcp config --edit
+
+# Reset all configuration
+e2b-mcp config --reset
+```
+
+### CLI Examples
+
+```bash
+# GitHub integration
+export GITHUB_TOKEN="your_token"
+e2b-mcp server add github \
+  --command "npx -y @modelcontextprotocol/server-github" \
+  --env GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_TOKEN
+
+e2b-mcp tools execute github search_repositories \
+  --params '{"query": "e2b", "per_page": 3}'
+
+# Filesystem operations
+e2b-mcp server add fs \
+  --command "npx -y @modelcontextprotocol/server-filesystem /tmp"
+
+e2b-mcp tools execute fs write_file \
+  --param path=/tmp/test.txt \
+  --param content="Hello CLI!"
+
+e2b-mcp tools execute fs read_file \
+  --param path=/tmp/test.txt
+
+# Using quick execute for one-offs
+e2b-mcp quick "npx -y @modelcontextprotocol/server-filesystem /tmp" \
+  list_directory --param path=/tmp --json
+```
+
+Configuration is stored in `~/.e2b-mcp/servers.json` and can be shared across different environments.
 
 ## Configuration
 
@@ -239,9 +378,49 @@ cd e2b-mcp
 # Install in development mode
 pip install -e ".[dev]"
 
-# Format code
+# Format and lint code using the provided script
+./scripts/format
+
+# Or run individual tools manually
 black .
 ruff check .
+```
+
+### Development Scripts
+
+The project includes helpful development scripts in the `scripts/` directory:
+
+#### Format Script (`./scripts/format`)
+Automatically formats and lints the codebase:
+- Runs `black` for code formatting
+- Runs `ruff check --fix --unsafe-fixes` for linting and auto-fixes
+- Runs `ruff format` for import sorting
+- Runs `mypy` for type checking
+
+```bash
+./scripts/format
+```
+
+#### Release Script (`./scripts/release`)
+Handles the complete release process:
+- Runs tests and formatting
+- Bumps version in `pyproject.toml`
+- Creates git commit and tag
+- Builds package with `uv build`
+- Optionally pushes to GitHub
+- Optionally publishes to PyPI
+
+```bash
+# Interactive release (will prompt for version type)
+./scripts/release
+
+# Release with specific version type
+./scripts/release patch   # 0.1.0 -> 0.1.1
+./scripts/release minor   # 0.1.0 -> 0.2.0
+./scripts/release major   # 0.1.0 -> 1.0.0
+
+# Release with custom version
+./scripts/release 1.2.3
 ```
 
 ### Testing

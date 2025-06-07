@@ -28,6 +28,7 @@ classifiers = [
 
 dependencies = [
     "e2b-code-interpreter>=1.5.1",
+    "click>=8.0.0",
 ]
 
 [project.optional-dependencies]
@@ -55,6 +56,8 @@ target-version = ['py310']
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "B", "I", "N", "UP", "SIM"]
 
 [tool.mypy]
@@ -100,3 +103,6 @@ dev = [
     "pytest-asyncio>=1.0.0",
     "ruff>=0.11.13",
 ]
+
+[project.scripts]
+e2b-mcp = "e2b_mcp.cli:cli"

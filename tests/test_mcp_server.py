@@ -5,11 +5,12 @@ Test MCP server for e2b-mcp integration testing.
 This server supports both stdio and file-based communication modes
 and provides simple tools for testing the E2B MCP pipeline.
 """
+
+import argparse
 import json
+import select
 import sys
 import time
-import argparse
-import select
 from datetime import datetime
 from pathlib import Path
 
@@ -43,10 +44,10 @@ class TestMCPServer:
                                     "format": {
                                         "type": "string",
                                         "description": "Time format (iso, timestamp, or readable)",
-                                        "default": "iso"
+                                        "default": "iso",
                                     }
-                                }
-                            }
+                                },
+                            },
                         },
                         {
                             "name": "echo",
@@ -54,13 +55,10 @@ class TestMCPServer:
                             "inputSchema": {
                                 "type": "object",
                                 "properties": {
-                                    "text": {
-                                        "type": "string",
-                                        "description": "Text to echo back"
-                                    }
+                                    "text": {"type": "string", "description": "Text to echo back"}
                                 },
-                                "required": ["text"]
-                            }
+                                "required": ["text"],
+                            },
                         },
                         {
                             "name": "add_numbers",
@@ -69,13 +67,13 @@ class TestMCPServer:
                                 "type": "object",
                                 "properties": {
                                     "a": {"type": "number", "description": "First number"},
-                                    "b": {"type": "number", "description": "Second number"}
+                                    "b": {"type": "number", "description": "Second number"},
                                 },
-                                "required": ["a", "b"]
-                            }
-                        }
+                                "required": ["a", "b"],
+                            },
+                        },
                     ]
-                }
+                },
             }
         elif method == "tools/call":
             tool_name = params.get("name")
@@ -95,14 +93,7 @@ class TestMCPServer:
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(result)
-                            }
-                        ]
-                    }
+                    "result": {"content": [{"type": "text", "text": json.dumps(result)}]},
                 }
             elif tool_name == "echo":
                 text = arguments.get("text", "")
@@ -110,14 +101,7 @@ class TestMCPServer:
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(result)
-                            }
-                        ]
-                    }
+                    "result": {"content": [{"type": "text", "text": json.dumps(result)}]},
                 }
             elif tool_name == "add_numbers":
                 a = arguments.get("a", 0)
@@ -126,39 +110,26 @@ class TestMCPServer:
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(result)
-                            }
-                        ]
-                    }
+                    "result": {"content": [{"type": "text", "text": json.dumps(result)}]},
                 }
             else:
                 return {
                     "jsonrpc": "2.0",
                     "id": request_id,
-                    "error": {
-                        "code": -32601,
-                        "message": f"Unknown tool: {tool_name}"
-                    }
+                    "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"},
                 }
         else:
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "error": {
-                    "code": -32601,
-                    "message": f"Unknown method: {method}"
-                }
+                "error": {"code": -32601, "message": f"Unknown method: {method}"},
             }
 
     def run_stdio_mode(self):
         """Run server in stdio mode."""
         print("MCP Server starting in stdio mode...", file=sys.stderr)
         sys.stderr.flush()
-        
+
         while True:
             try:
                 # Check if stdin has data available
@@ -188,10 +159,7 @@ class TestMCPServer:
                 error_response = {
                     "jsonrpc": "2.0",
                     "id": None,
-                    "error": {
-                        "code": -32603,
-                        "message": f"Internal error: {e}"
-                    }
+                    "error": {"code": -32603, "message": f"Internal error: {e}"},
                 }
                 print(json.dumps(error_response))
                 sys.stdout.flush()
@@ -203,7 +171,7 @@ class TestMCPServer:
         while True:
             try:
                 if self.request_file.exists():
-                    with open(self.request_file, 'r') as f:
+                    with open(self.request_file) as f:
                         lines = f.readlines()
 
                     for line in lines:
@@ -224,8 +192,8 @@ class TestMCPServer:
                         response = self.handle_request(request)
 
                         # Write response
-                        with open(self.response_file, 'a') as f:
-                            f.write(json.dumps(response) + '\n')
+                        with open(self.response_file, "a") as f:
+                            f.write(json.dumps(response) + "\n")
 
                 time.sleep(0.1)  # Small delay to avoid busy waiting
 
@@ -239,10 +207,10 @@ class TestMCPServer:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file-mode", action="store_true",
-                       help="Use file-based communication instead of stdio")
-    parser.add_argument("--stdio", action="store_true",
-                       help="Use stdio communication (default)")
+    parser.add_argument(
+        "--file-mode", action="store_true", help="Use file-based communication instead of stdio"
+    )
+    parser.add_argument("--stdio", action="store_true", help="Use stdio communication (default)")
     args = parser.parse_args()
 
     server = TestMCPServer(file_mode=args.file_mode)

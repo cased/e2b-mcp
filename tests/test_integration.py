@@ -4,12 +4,14 @@ Integration tests for e2b-mcp package.
 These tests require a valid E2B_API_KEY and will create real E2B sandboxes.
 They test the full pipeline from sandbox creation to tool execution.
 """
-import os
-import pytest
-import asyncio
-from pathlib import Path
-from e2b_mcp import E2BMCPRunner, ServerConfig, MCPError
 
+import asyncio
+import os
+from pathlib import Path
+
+import pytest
+
+from e2b_mcp import E2BMCPRunner, MCPError, ServerConfig
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
@@ -37,12 +39,14 @@ def runner(e2b_api_key):
     runner = E2BMCPRunner(api_key=e2b_api_key)
 
     # Add test server configuration that will copy the test server
-    runner.add_server(ServerConfig(
-        name="test_server",
-        command="python /tmp/test_mcp_server.py --stdio",
-        description="Test MCP server for integration tests",
-        timeout_minutes=3  # Short timeout for tests
-    ))
+    runner.add_server(
+        ServerConfig(
+            name="test_server",
+            command="python /tmp/test_mcp_server.py --stdio",
+            description="Test MCP server for integration tests",
+            timeout_minutes=3,  # Short timeout for tests
+        )
+    )
 
     return runner
 
@@ -139,6 +143,7 @@ class TestE2BMCPIntegration:
 
                 # Parse the JSON response
                 import json
+
                 content = json.loads(result["content"][0]["text"])
                 assert "time" in content
         finally:
@@ -167,6 +172,7 @@ class TestE2BMCPIntegration:
             content_text = result["content"][0]["text"]
 
             import json
+
             parsed = json.loads(content_text)
             assert parsed["echoed"] == test_message
         finally:
@@ -193,6 +199,7 @@ class TestE2BMCPIntegration:
             content_text = result["content"][0]["text"]
 
             import json
+
             parsed = json.loads(content_text)
             assert parsed["sum"] == 55
         finally:
@@ -241,13 +248,15 @@ class TestE2BMCPWithPackageInstallation:
         runner = E2BMCPRunner(api_key=e2b_api_key)
 
         # Add server that requires package installation
-        runner.add_server(ServerConfig(
-            name="requests_server",
-            command="python -c 'import requests; print(\"Requests package available\")'",
-            package="requests",
-            description="Test server with package dependency",
-            timeout_minutes=3
-        ))
+        runner.add_server(
+            ServerConfig(
+                name="requests_server",
+                command="python -c 'import requests; print(\"Requests package available\")'",
+                package="requests",
+                description="Test server with package dependency",
+                timeout_minutes=3,
+            )
+        )
 
         # This should work without error if package installation works
         async with runner.create_session("requests_server") as session:
@@ -258,13 +267,18 @@ class TestE2BMCPWithPackageInstallation:
         """Test MCP server with environment variables."""
         runner = E2BMCPRunner(api_key=e2b_api_key)
 
-        runner.add_server(ServerConfig(
-            name="env_server",
-            command="python -c 'import os; print(f\"TEST_VAR={os.getenv(\"TEST_VAR\", \"not_set\")}\")'",
-            env={"TEST_VAR": "integration_test_value"},
-            description="Test server with environment variables",
-            timeout_minutes=2
-        ))
+        runner.add_server(
+            ServerConfig(
+                name="env_server",
+                command=(
+                    "python -c 'import os; "
+                    'print(f"TEST_VAR={os.getenv(\\"TEST_VAR\\", \\"not_set\\")}")\''
+                ),
+                env={"TEST_VAR": "integration_test_value"},
+                description="Test server with environment variables",
+                timeout_minutes=2,
+            )
+        )
 
         async with runner.create_session("env_server") as session:
             assert session.initialized is True
@@ -290,7 +304,7 @@ class TestE2BMCPPerformance:
         runner._setup_mcp_server = setup_with_test_server
 
         async def quick_session():
-            async with runner.create_session("test_server") as session:
+            async with runner.create_session("test_server"):
                 await asyncio.sleep(0.1)  # Brief work
                 return True
 
@@ -314,10 +328,9 @@ def test_runner_configuration():
     """Test runner can be configured without E2B API key for config testing."""
     runner = E2BMCPRunner(api_key="dummy_key")
 
-    runner.add_server_from_dict("test", {
-        "command": "python test.py",
-        "description": "Test configuration"
-    })
+    runner.add_server_from_dict(
+        "test", {"command": "python test.py", "description": "Test configuration"}
+    )
 
     assert len(runner.list_servers()) == 1
     assert runner.get_server_config("test") is not None

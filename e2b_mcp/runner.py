@@ -4,18 +4,20 @@ E2B MCP Runner - Core implementation for running MCP servers in E2B sandboxes.
 This is the main interface for the package, providing a clean API for managing
 MCP servers in secure E2B sandboxes.
 """
+
 import asyncio
 import json
 import logging
 import os
-import uuid
 import shlex
+import uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Optional, Dict, List, Tuple
+from typing import Any
 
-from e2b_code_interpreter import AsyncSandbox as Sandbox
+from e2b_code_interpreter import AsyncSandbox as Sandbox  # type: ignore[import-untyped]
 
-from .models import ServerConfig, Tool, Session, MCPError
+from .models import MCPError, ServerConfig, Session, Tool
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class E2BMCPRunner:
     - Executing tools safely in sandboxes
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         """
         Initialize E2B MCP Runner.
 
@@ -43,12 +45,10 @@ class E2BMCPRunner:
         """
         self.api_key = api_key or os.getenv("E2B_API_KEY")
         if not self.api_key:
-            raise ValueError(
-                "E2B_API_KEY is required. Get your API key from https://e2b.dev"
-            )
+            raise ValueError("E2B_API_KEY is required. Get your API key from https://e2b.dev")
 
-        self.server_configs: Dict[str, ServerConfig] = {}
-        self.active_sessions: Dict[str, Tuple[Session, Sandbox]] = {}
+        self.server_configs: dict[str, ServerConfig] = {}
+        self.active_sessions: dict[str, tuple[Session, Sandbox]] = {}
         self._use_stdio = True
 
     def add_server(self, config: ServerConfig) -> None:
@@ -61,7 +61,7 @@ class E2BMCPRunner:
         self.server_configs[config.name] = config
         logger.info(f"Added MCP server config: {config.name}")
 
-    def add_server_from_dict(self, name: str, config_data: Dict[str, Any]) -> None:
+    def add_server_from_dict(self, name: str, config_data: dict[str, Any]) -> None:
         """
         Add an MCP server configuration from dictionary.
 
@@ -72,13 +72,13 @@ class E2BMCPRunner:
         config = ServerConfig.from_dict(name, config_data)
         self.add_server(config)
 
-    def add_servers(self, configs: Dict[str, Dict[str, Any]]) -> None:
+    def add_servers(self, configs: dict[str, dict[str, Any]]) -> None:
         """
         Add multiple server configurations at once.
 
         Args:
             configs: Dictionary of server name to configuration data
-            
+
         Raises:
             ValueError: If any configuration is invalid (no configs will be added)
         """
@@ -91,20 +91,20 @@ class E2BMCPRunner:
             except Exception as e:
                 # If any config is invalid, don't add any configs
                 raise ValueError(f"Invalid configuration for server '{name}': {e}") from e
-        
+
         for name, config in validated_configs.items():
             self.server_configs[name] = config
             logger.info(f"Added MCP server config: {name}")
 
-    def list_servers(self) -> List[str]:
+    def list_servers(self) -> list[str]:
         """List all configured server names."""
         return list(self.server_configs.keys())
 
-    def get_server_config(self, name: str) -> Optional[ServerConfig]:
+    def get_server_config(self, name: str) -> ServerConfig | None:
         """Get server configuration by name."""
         return self.server_configs.get(name)
 
-    def get_server_info(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_server_info(self, name: str) -> dict[str, Any] | None:
         """
         Get detailed information about a server.
 
@@ -129,7 +129,7 @@ class E2BMCPRunner:
             "env_vars": list(config.env.keys()),
         }
 
-    def list_active_sessions(self) -> List[Dict[str, Any]]:
+    def list_active_sessions(self) -> list[dict[str, Any]]:
         """
         Get information about all active sessions.
 
@@ -137,14 +137,16 @@ class E2BMCPRunner:
             List of session information dictionaries
         """
         session_info = []
-        for session_id, (session, sandbox) in self.active_sessions.items():
-            session_info.append({
-                "session_id": session_id,
-                "server_name": session.server_name,
-                "sandbox_id": session.sandbox_id,
-                "initialized": session.initialized,
-                "tool_count": session.get_tool_count(),
-            })
+        for session_id, (session, _sandbox) in self.active_sessions.items():
+            session_info.append(
+                {
+                    "session_id": session_id,
+                    "server_name": session.server_name,
+                    "sandbox_id": session.sandbox_id,
+                    "initialized": session.initialized,
+                    "tool_count": session.get_tool_count(),
+                }
+            )
         return session_info
 
     def get_active_session_count(self) -> int:
@@ -152,7 +154,7 @@ class E2BMCPRunner:
         return len(self.active_sessions)
 
     @asynccontextmanager
-    async def create_session(self, server_name: str):
+    async def create_session(self, server_name: str) -> AsyncIterator[Session]:
         """
         Create a new MCP session in an E2B sandbox.
 
@@ -205,7 +207,7 @@ class E2BMCPRunner:
             logger.error(f"Failed to create MCP session for {server_name}: {e}")
             raise MCPError(f"Failed to create MCP session: {e}") from e
 
-    async def discover_tools(self, server_name: str) -> List[Tool]:
+    async def discover_tools(self, server_name: str) -> list[Tool]:
         """
         Discover tools from an MCP server.
 
@@ -227,10 +229,7 @@ class E2BMCPRunner:
                 tools_data = response.get("tools", [])
 
                 # Convert to Tool objects
-                tools = [
-                    Tool.from_mcp_tool(tool_data, server_name)
-                    for tool_data in tools_data
-                ]
+                tools = [Tool.from_mcp_tool(tool_data, server_name) for tool_data in tools_data]
 
                 logger.info(f"Discovered {len(tools)} tools from {server_name}")
                 return tools
@@ -240,11 +239,8 @@ class E2BMCPRunner:
                 raise MCPError(f"Failed to discover tools from {server_name}: {e}") from e
 
     async def execute_tool(
-        self,
-        server_name: str,
-        tool_name: str,
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, server_name: str, tool_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Execute a tool on an MCP server.
 
@@ -263,31 +259,28 @@ class E2BMCPRunner:
 
         # Validate that server is configured
         if server_name not in self.server_configs:
-            raise MCPError(
-                f"Server '{server_name}' not configured",
-                server_name=server_name
-            )
+            raise MCPError(f"Server '{server_name}' not configured", server_name=server_name)
 
         async with self.create_session(server_name) as session:
             try:
                 # First discover tools to get schema for validation
                 tools = await self._discover_tools_for_session(session)
-                
+
                 # Find the specific tool
                 tool = None
                 for t in tools:
                     if t.name == tool_name:
                         tool = t
                         break
-                
+
                 if tool is None:
                     available_tools = [t.name for t in tools]
                     raise MCPError(
                         f"Tool '{tool_name}' not found. Available tools: {available_tools}",
                         server_name=server_name,
-                        tool_name=tool_name
+                        tool_name=tool_name,
                     )
-                
+
                 # Validate parameters against tool schema
                 validation_errors = tool.validate_parameters(params)
                 if validation_errors:
@@ -295,10 +288,9 @@ class E2BMCPRunner:
                     raise MCPError(error_msg, server_name=server_name, tool_name=tool_name)
 
                 # Send tools/call request
-                response = await self._send_mcp_request(session, "tools/call", {
-                    "name": tool_name,
-                    "arguments": params
-                })
+                response = await self._send_mcp_request(
+                    session, "tools/call", {"name": tool_name, "arguments": params}
+                )
 
                 logger.info(f"Successfully executed tool {tool_name}")
                 return response
@@ -309,17 +301,12 @@ class E2BMCPRunner:
             except Exception as e:
                 logger.error(f"Failed to execute tool {tool_name}: {e}")
                 raise MCPError(
-                    f"Tool execution failed: {e}", 
-                    server_name=server_name, 
-                    tool_name=tool_name
+                    f"Tool execution failed: {e}", server_name=server_name, tool_name=tool_name
                 ) from e
 
     async def validate_tool_parameters(
-        self,
-        server_name: str,
-        tool_name: str,
-        params: Dict[str, Any]
-    ) -> List[str]:
+        self, server_name: str, tool_name: str, params: dict[str, Any]
+    ) -> list[str]:
         """
         Validate parameters for a tool without executing it.
 
@@ -339,31 +326,31 @@ class E2BMCPRunner:
 
         # Discover tools to get the schema
         tools = await self.discover_tools(server_name)
-        
+
         # Find the specific tool
         tool = None
         for t in tools:
             if t.name == tool_name:
                 tool = t
                 break
-        
+
         if tool is None:
             available_tools = [t.name for t in tools]
             raise MCPError(
                 f"Tool '{tool_name}' not found. Available tools: {available_tools}",
                 server_name=server_name,
-                tool_name=tool_name
+                tool_name=tool_name,
             )
-        
+
         return tool.validate_parameters(params)
 
-    async def _discover_tools_for_session(self, session: Session) -> List[Tool]:
+    async def _discover_tools_for_session(self, session: Session) -> list[Tool]:
         """
         Discover tools for an existing session without creating a new one.
-        
+
         Args:
             session: Existing MCP session
-            
+
         Returns:
             List of discovered tools
         """
@@ -373,29 +360,20 @@ class E2BMCPRunner:
             tools_data = response.get("tools", [])
 
             # Convert to Tool objects
-            tools = [
-                Tool.from_mcp_tool(tool_data, session.server_name)
-                for tool_data in tools_data
-            ]
+            tools = [Tool.from_mcp_tool(tool_data, session.server_name) for tool_data in tools_data]
 
             # Cache tools in session
             session.tools = tools
-            
+
             logger.info(f"Discovered {len(tools)} tools from {session.server_name}")
             return tools
 
         except Exception as e:
-            raise MCPError(
-                f"Failed to discover tools: {e}",
-                server_name=session.server_name
-            ) from e
+            raise MCPError(f"Failed to discover tools: {e}", server_name=session.server_name) from e
 
     def execute_tool_sync(
-        self,
-        server_name: str,
-        tool_name: str,
-        params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, server_name: str, tool_name: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Synchronous wrapper for execute_tool.
 
@@ -419,9 +397,7 @@ class E2BMCPRunner:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-        return loop.run_until_complete(
-            self.execute_tool(server_name, tool_name, params)
-        )
+        return loop.run_until_complete(self.execute_tool(server_name, tool_name, params))
 
     async def _setup_mcp_server(self, session: Session, sandbox: Sandbox) -> None:
         """Setup MCP server in the sandbox."""
@@ -431,11 +407,11 @@ class E2BMCPRunner:
         if config.package:
             logger.info(f"Installing package: {config.package}")
             # Security: properly escape package name to prevent injection
-            escaped_package = shlex.quote(config.package)
+            shlex.quote(config.package)
             install_code = f"""
 import subprocess
 import sys
-result = subprocess.run([sys.executable, '-m', 'pip', 'install', '{config.package}'], 
+result = subprocess.run([sys.executable, '-m', 'pip', 'install', '{config.package}'],
                        capture_output=True, text=True, check=True)
 print("Package installed successfully")
 """
@@ -452,7 +428,7 @@ print("Package installed successfully")
                 escaped_key = shlex.quote(key)
                 escaped_value = shlex.quote(value)
                 env_commands.append(f"export {escaped_key}={escaped_value}")
-            
+
             env_code = "; ".join(env_commands)
             await sandbox.run_code(env_code)
             logger.info(f"Set environment variables: {list(config.env.keys())}")
@@ -463,7 +439,7 @@ print("Package installed successfully")
             file_path = cmd_parts[1]
         else:
             file_path = "/tmp/test_mcp_server.py"  # fallback
-            
+
         # Note: In production, the MCP server file is assumed to already exist
         # or be provided via config. For tests, it's uploaded separately.
         logger.debug(f"Using MCP server file: {file_path}")
@@ -471,7 +447,7 @@ print("Package installed successfully")
         # Use the command exactly as configured - different MCP servers handle stdio differently
         # Some use stdio by default, some need --stdio flag, some use other conventions
         command = config.command
-        
+
         logger.info(f"Starting MCP server with command: {command}")
         try:
             logger.debug(f"Executing command: {command}")
@@ -479,7 +455,7 @@ print("Package installed successfully")
             # Buffer for partial stdout lines
             stdout_buffer = ""
 
-            def _on_stdout(data: str):
+            def _on_stdout(data: str) -> None:
                 nonlocal stdout_buffer
                 stdout_buffer += data
                 while "\n" in stdout_buffer:
@@ -497,11 +473,13 @@ print("Package installed successfully")
                         fut = session.pending_requests.pop(req_id)
                         if not fut.done():
                             if "error" in response:
-                                fut.set_exception(MCPError(f"MCP server error: {response['error']}"))
+                                fut.set_exception(
+                                    MCPError(f"MCP server error: {response['error']}")
+                                )
                             else:
                                 fut.set_result(response.get("result", {}))
 
-            def _on_stderr(data: str):
+            def _on_stderr(data: str) -> None:
                 logger.error(f"MCP server stderr: {data}")
 
             process_handle = await sandbox.commands.run(
@@ -514,26 +492,28 @@ print("Package installed successfully")
             session.pid = process_handle.pid
             session.cmd_handle = process_handle
             logger.debug(f"Command started, PID={session.pid}")
-            
+
             # Give the process a moment to start and check if it's running
             await asyncio.sleep(5)  # Give more time for server to fully initialize
-            
+
             # Check if the process is still running
             try:
-                ps_result = await sandbox.run_code("""
+                ps_result = await sandbox.run_code(
+                    """
 import subprocess, os, time
 print(f"Looking for PID {session.pid}")
 result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
-lines = result.stdout.split('\\n') 
+lines = result.stdout.split('\\n')
 our_process = [line for line in lines if str(session.pid) in line]
 print(f"Our process ({session.pid}): {our_process}")
 all_python = [line for line in lines if 'python' in line and 'test_mcp_server.py' in line]
 print(f"All MCP processes: {all_python}")
-""")
-                logger.info(f"Process check result: {getattr(ps_result,'stdout','')}")
+"""
+                )
+                logger.info(f"Process check result: {getattr(ps_result, 'stdout', '')}")
             except Exception as e:
                 logger.debug(f"Failed to check processes: {e}")
-            
+
             # Wait for server to become ready by checking for initialization
             await self._wait_for_server_ready(session, sandbox)
 
@@ -544,62 +524,59 @@ print(f"All MCP processes: {all_python}")
             logger.error(f"Failed to start MCP server: {e}")
             raise MCPError(f"Failed to start MCP server: {e}") from e
 
-    async def _wait_for_server_ready(self, session: Session, sandbox: Sandbox, timeout: int = 30) -> None:
+    async def _wait_for_server_ready(
+        self, session: Session, sandbox: Sandbox, timeout: int = 30
+    ) -> None:
         """Wait briefly; stdio responses will prove readiness."""
         await asyncio.sleep(1)
         return
 
     async def _send_mcp_request(
-        self,
-        session: Session,
-        method: str,
-        params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, session: Session, method: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Send MCP request via stdio when available, else fallback to files."""
 
         if not session.initialized:
             raise MCPError("MCP server not initialized")
 
         request_id = str(uuid.uuid4())
-        request = {"jsonrpc": "2.0", "id": request_id, "method": method}
+        request: dict[str, Any] = {"jsonrpc": "2.0", "id": request_id, "method": method}
         if params:
             request["params"] = params
 
         if self._use_stdio and session.pid:
             # stdio path
-            _, sandbox = self.active_sessions[session.session_id]
+            session_obj, sandbox = self.active_sessions[session.session_id]
             loop = asyncio.get_event_loop()
-            fut: "asyncio.Future[Any]" = loop.create_future()
+            fut: asyncio.Future[dict[str, Any]] = loop.create_future()
             session.pending_requests[request_id] = fut
 
             # Send over stdin
             await sandbox.commands.send_stdin(session.pid, json.dumps(request) + "\n")
 
             try:
-                result = await asyncio.wait_for(fut, timeout=30)
+                result: dict[str, Any] = await asyncio.wait_for(fut, timeout=30)
                 return result
             except asyncio.TimeoutError:
                 session.pending_requests.pop(request_id, None)
-                raise MCPError(f"Timeout waiting for MCP response to request {request_id}")
+                raise MCPError(
+                    f"Timeout waiting for MCP response to request {request_id}"
+                ) from None
 
         raise MCPError("Session not configured for stdio communication")
 
     async def _wait_for_response(
-        self, 
-        sandbox: Sandbox, 
-        response_file: str, 
-        request_id: str,
-        timeout: int = 30
-    ) -> Dict[str, Any]:
+        self, sandbox: Sandbox, response_file: str, request_id: str, timeout: int = 30
+    ) -> dict[str, Any]:
         """Wait for MCP response using simple polling."""
         start_time = asyncio.get_event_loop().time()
         poll_count = 0
-        
+
         logger.debug(f"Starting to wait for response {request_id}, timeout={timeout}s")
-        
+
         while (asyncio.get_event_loop().time() - start_time) < timeout:
             poll_count += 1
-            
+
             # Simple approach: just read the entire response file each time
             read_code = f"""
 import os
@@ -615,26 +592,28 @@ else:
     print("FILE_SIZE:0")
     print("FILE_CONTENT:")
 """
-            
+
             try:
                 result = await sandbox.run_code(read_code)
                 if result.error:
                     logger.debug(f"Poll {poll_count}: Error reading response file")
                     await asyncio.sleep(0.1)
                     continue
-                
+
                 # Extract content from logs
                 file_content = ""
-                for line in getattr(result,'stdout','').splitlines():
+                for line in getattr(result, "stdout", "").splitlines():
                     if line.startswith("FILE_CONTENT:"):
                         file_content = line[13:]  # Remove "FILE_CONTENT:" prefix
                         break
-                
+
                 if file_content.strip():
-                    logger.debug(f"Poll {poll_count}: Got file content, checking for response {request_id}")
-                    
+                    logger.debug(
+                        f"Poll {poll_count}: Got file content, checking for response {request_id}"
+                    )
+
                     # Parse each line looking for our response
-                    for response_line in file_content.strip().split('\n'):
+                    for response_line in file_content.strip().split("\n"):
                         if not response_line.strip():
                             continue
                         try:
@@ -643,34 +622,39 @@ else:
                                 logger.debug(f"Poll {poll_count}: Found matching response!")
                                 if "error" in response:
                                     raise MCPError(f"MCP server error: {response['error']}")
-                                return response.get("result", {})
+                                result_data = response.get("result", {})
+                                if isinstance(result_data, dict):
+                                    return result_data
+                                else:
+                                    return {}
                         except json.JSONDecodeError as json_err:
                             logger.debug(f"Poll {poll_count}: JSON decode error: {json_err}")
                             continue
                 else:
                     if poll_count % 10 == 0:  # Log every second
-                        # Add detailed debugging every 10 polls  
-                        debug_result = await sandbox.run_code(f"""
+                        # Add detailed debugging every 10 polls
+                        debug_result = await sandbox.run_code(
+                            """
 import os
 import subprocess
 print("=== DEBUG INFO ===")
-print(f"Request file exists: {{os.path.exists('/tmp/mcp/requests.jsonl')}}")
-print(f"Response file exists: {{os.path.exists('/tmp/mcp/responses.jsonl')}}")
+print(f"Request file exists: {os.path.exists('/tmp/mcp/requests.jsonl')}")
+print(f"Response file exists: {os.path.exists('/tmp/mcp/responses.jsonl')}")
 
 if os.path.exists('/tmp/mcp/requests.jsonl'):
     with open('/tmp/mcp/requests.jsonl', 'r') as f:
         req_content = f.read()
-    print(f"Request file lines: {{len(req_content.splitlines())}}")
+    print(f"Request file lines: {len(req_content.splitlines())}")
     if req_content.strip():
-        print(f"Last request line: {{req_content.splitlines()[-1]}}")
+        print(f"Last request line: {req_content.splitlines()[-1]}")
 
 # Check response file size
 if os.path.exists('/tmp/mcp/responses.jsonl'):
     with open('/tmp/mcp/responses.jsonl', 'r') as f:
         resp_content = f.read()
-    print(f"Response file size: {{len(resp_content)}} chars")
+    print(f"Response file size: {len(resp_content)} chars")
     if resp_content.strip():
-        print(f"Response content: {{resp_content[:200]}}...")
+        print(f"Response content: {resp_content[:200]}...")
     else:
         print("Response file is EMPTY!")
 
@@ -678,9 +662,9 @@ if os.path.exists('/tmp/mcp/responses.jsonl'):
 result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
 lines = result.stdout.split('\\n')
 mcp_processes = [line for line in lines if 'test_mcp_server.py' in line]
-print(f"MCP server processes: {{len(mcp_processes)}}")
+print(f"MCP server processes: {len(mcp_processes)}")
 for proc in mcp_processes:
-    print(f"Process: {{proc}}")
+    print(f"Process: {proc}")
 
 # Check for any error logs or stderr from the MCP server
 print("Checking for MCP server errors...")
@@ -689,29 +673,33 @@ try:
     import glob
     log_files = glob.glob('/tmp/*.log') + glob.glob('/tmp/mcp/*.log')
     if log_files:
-        print(f"Found log files: {{log_files}}")
+        print(f"Found log files: {log_files}")
         for log_file in log_files[:3]:  # Show first 3 log files
             with open(log_file, 'r') as f:
                 content = f.read()[-500:]  # Last 500 chars
-            print(f"{{log_file}}: {{content}}")
+            print(f"{log_file}: {content}")
     else:
         print("No log files found in /tmp/")
 except Exception as e:
-    print(f"Error checking logs: {{e}}")
+    print(f"Error checking logs: {e}")
 
 print("=== END DEBUG ===")
-""")
+"""
+                        )
                         if not debug_result.error:
-                            logger.debug(f"Poll {poll_count}: Debug info: {getattr(debug_result,'stdout','')}")
+                            debug_stdout = getattr(debug_result, "stdout", "")
+                            logger.debug(f"Poll {poll_count}: Debug info: {debug_stdout}")
                         else:
                             logger.debug(f"Poll {poll_count}: Response file empty, still waiting")
-                
+
             except Exception as err:
                 logger.debug(f"Poll {poll_count}: Polling error: {err}")
-            
+
             await asyncio.sleep(0.1)  # Poll every 100ms
 
-        logger.error(f"Timeout after {poll_count} polls waiting for MCP response to request {request_id}")
+        logger.error(
+            f"Timeout after {poll_count} polls waiting for MCP response to request {request_id}"
+        )
         raise MCPError(f"Timeout waiting for MCP response to request {request_id}")
 
     async def _cleanup_session(self, session: Session, sandbox: Sandbox) -> None:

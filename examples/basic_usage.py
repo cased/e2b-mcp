@@ -10,9 +10,11 @@ This example shows how to:
 5. Use parameter validation
 6. Handle errors gracefully
 """
+
 import asyncio
 import os
-from e2b_mcp import E2BMCPRunner, ServerConfig, MCPError
+
+from e2b_mcp import E2BMCPRunner, MCPError, ServerConfig
 
 
 async def main():
@@ -38,7 +40,7 @@ async def main():
             name="test",
             command="python /tmp/test_mcp_server.py",
             description="Simple test server with time, echo, and math tools",
-            timeout_minutes=5
+            timeout_minutes=5,
         )
         runner.add_server(test_config)
         print(f"✅ Added server: {test_config.name}")
@@ -50,14 +52,14 @@ async def main():
                 "command": "python -m mcp_server_filesystem --stdio",
                 "package": "mcp-server-filesystem",
                 "description": "File system operations",
-                "timeout_minutes": 10
+                "timeout_minutes": 10,
             },
             "git_example": {
                 "command": "python -m mcp_server_git --stdio",
-                "package": "mcp-server-git", 
+                "package": "mcp-server-git",
                 "description": "Git repository operations",
-                "timeout_minutes": 8
-            }
+                "timeout_minutes": 8,
+            },
         }
         runner.add_servers(bulk_configs)
         print("✅ Added bulk server configurations")
@@ -81,7 +83,7 @@ async def main():
 
         # 6. Parameter validation (new feature)
         print("\n6️⃣ Testing parameter validation...")
-        
+
         # Test valid parameters
         valid_params = {"format": "iso"}
         validation_errors = await runner.validate_tool_parameters("test", "get_time", valid_params)
@@ -93,7 +95,9 @@ async def main():
         # Test invalid parameters (missing required param)
         try:
             invalid_params = {}  # Missing required 'text' parameter
-            validation_errors = await runner.validate_tool_parameters("test", "echo", invalid_params)
+            validation_errors = await runner.validate_tool_parameters(
+                "test", "echo", invalid_params
+            )
             if validation_errors:
                 print(f"✅ Invalid parameters correctly caught: {validation_errors}")
             else:
@@ -155,6 +159,7 @@ async def main():
     except Exception as e:
         print(f"\n❌ Unexpected Error: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -168,10 +173,13 @@ def sync_example():
         runner = E2BMCPRunner()
 
         # Add server
-        runner.add_server_from_dict("sync_test", {
-            "command": "python /tmp/test_mcp_server.py",
-            "description": "Test server for sync example"
-        })
+        runner.add_server_from_dict(
+            "sync_test",
+            {
+                "command": "python /tmp/test_mcp_server.py",
+                "description": "Test server for sync example",
+            },
+        )
 
         # Execute tool synchronously
         result = runner.execute_tool_sync("sync_test", "get_time", {"format": "iso"})
@@ -186,20 +194,20 @@ def sync_example():
 def validation_example():
     """Demonstrate the new validation features."""
     print("\n" + "=" * 50)
-    print("🔍 Parameter Validation Example") 
+    print("🔍 Parameter Validation Example")
     print("=" * 50)
 
     try:
         # Test server config validation
         print("\n📋 Testing server configuration validation...")
-        
+
         try:
             # This should work
-            valid_config = ServerConfig(
+            ServerConfig(
                 name="valid_server",
                 command="python test.py",
                 package="test-package",
-                timeout_minutes=5
+                timeout_minutes=5,
             )
             print("✅ Valid config created successfully")
         except ValueError as e:
@@ -207,9 +215,9 @@ def validation_example():
 
         try:
             # This should fail - invalid server name
-            invalid_config = ServerConfig(
+            ServerConfig(
                 name="invalid server!",  # Spaces and special chars not allowed
-                command="python test.py"
+                command="python test.py",
             )
             print("⚠️  Expected this to fail but it succeeded")
         except ValueError as e:
@@ -217,11 +225,7 @@ def validation_example():
 
         try:
             # This should fail - negative timeout
-            invalid_config = ServerConfig(
-                name="test",
-                command="python test.py", 
-                timeout_minutes=-5
-            )
+            ServerConfig(name="test", command="python test.py", timeout_minutes=-5)
             print("⚠️  Expected this to fail but it succeeded")
         except ValueError as e:
             print(f"✅ Invalid timeout correctly rejected: {e}")
