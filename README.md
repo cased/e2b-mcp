@@ -402,26 +402,55 @@ Automatically formats and lints the codebase:
 ```
 
 #### Release Script (`./scripts/release`)
-Handles the complete release process:
-- Runs tests and formatting
-- Bumps version in `pyproject.toml`
-- Creates git commit and tag
-- Builds package with `uv build`
-- Optionally pushes to GitHub
-- Optionally publishes to PyPI
+Handles the complete professional release process with comprehensive pre-flight checks:
+- **Version Validation**: Ensures provided version matches `pyproject.toml`
+- **Pre-flight Checks**: Validates git state, branch, and required tools
+- **Environment Validation**: Checks PyPI credentials and dependencies
+- **Build & Publish**: Builds package and publishes to PyPI automatically
+- **Git Tagging**: Creates and pushes git tags to GitHub
+- **GitHub Releases**: Optionally creates GitHub releases with auto-generated notes
 
+**Prerequisites for Release:**
 ```bash
-# Interactive release (will prompt for version type)
-./scripts/release
+# 1. Set PyPI credentials (required)
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD='your-pypi-api-token'
 
-# Release with specific version type
-./scripts/release patch   # 0.1.0 -> 0.1.1
-./scripts/release minor   # 0.1.0 -> 0.2.0
-./scripts/release major   # 0.1.0 -> 1.0.0
+# 2. Install required tools
+pip install build twine
 
-# Release with custom version
-./scripts/release 1.2.3
+# 3. Optional: Install GitHub CLI for release creation
+brew install gh  # or equivalent for your system
 ```
+
+**Release Process:**
+```bash
+# 1. Update version in pyproject.toml manually
+# version = "0.2.0"
+
+# 2. Commit the version change
+git add pyproject.toml
+git commit -m "Bump version to 0.2.0"
+
+# 3. Run release script with the same version
+./scripts/release 0.2.0
+```
+
+**What the Release Script Does:**
+- ✅ Validates version matches `pyproject.toml`
+- ✅ Checks for clean git state and proper branch
+- ✅ Verifies PyPI credentials and required tools
+- ✅ Builds package with `python -m build`
+- ✅ Publishes to PyPI with `twine upload`
+- ✅ Creates and pushes git tag (`v0.2.0`)
+- ✅ Optionally creates GitHub release with auto-generated notes
+- ✅ Handles virtual environment deactivation/reactivation for clean builds
+
+**Security Features:**
+- Multiple confirmation prompts before destructive actions
+- Validates all prerequisites before starting
+- Clean error handling with helpful messages
+- Safe virtual environment handling
 
 ### Testing
 
