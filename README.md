@@ -32,13 +32,13 @@ E2B MCP enables powerful scenarios by running MCP servers on behalf of users in 
 
 ## Features
 
-- ** Secure Execution**: Run MCP servers in isolated E2B sandboxes
-- ** CLI & API**: Both command-line interface and Python API
-- ** Tool Discovery**: Automatically discover tools from MCP servers
-- ** Async/Sync Support**: Both async and synchronous execution modes
-- ** Auto Cleanup**: Automatic sandbox and resource management
-- ** Package Management**: Automatic installation of MCP server dependencies
-- ** Multi-Language**: Use from any language via CLI or build language-specific wrappers
+- **Secure Execution**: Run MCP servers in isolated E2B sandboxes
+- **CLI & API**: Both command-line interface and Python API
+- **Tool Discovery**: Automatically discover tools from MCP servers
+- **Async/Sync Support**: Both async and synchronous execution modes
+- **Auto Cleanup**: Automatic sandbox and resource management
+- **Package Management**: Automatic installation of MCP server dependencies
+- **Multi-Language**: Use from any language via CLI or build language-specific wrappers
 
 ## Installation
 
