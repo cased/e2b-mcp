@@ -43,12 +43,18 @@ async def main():
         # Example 1: Create a directory structure
         print("\n📁 Example 1: Create directory structure")
         try:
-            # Create a workspace directory (absolute path within /tmp)
-            mkdir_result = await runner.execute_tool("filesystem", "create_directory", {
+            # First create the workspace directory
+            workspace_result = await runner.execute_tool("filesystem", "create_directory", {
+                "path": "/tmp/workspace"
+            })
+            print("📂 Created workspace directory")
+            
+            # Then create the projects subdirectory
+            projects_result = await runner.execute_tool("filesystem", "create_directory", {
                 "path": "/tmp/workspace/projects"
             })
             print("📂 Created projects directory")
-            print(f"   Result: {mkdir_result}")
+            print(f"   Result: {projects_result}")
         except Exception as e:
             print(f"  ❌ Directory creation failed: {e}")
         
