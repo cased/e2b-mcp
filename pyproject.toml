@@ -1,0 +1,102 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "e2b-mcp"
+version = "0.1.0"
+description = "Run MCP (Model Context Protocol) servers securely in E2B sandboxes"
+authors = [
+    {name = "Cased", email = "team@cased.com"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["mcp", "e2b", "sandbox", "ai", "tools", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "e2b-code-interpreter>=1.5.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/cased/e2b-mcp"
+Repository = "https://github.com/cased/e2b-mcp"
+Documentation = "https://github.com/cased/e2b-mcp#readme"
+"Bug Tracker" = "https://github.com/cased/e2b-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["e2b_mcp"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "W", "B", "I", "N", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests that require E2B_API_KEY and create real sandboxes",
+    "slow: marks tests as slow running (performance, stress tests)",
+    "performance: marks tests that measure performance characteristics",
+    "stress: marks tests that test extreme conditions",
+    "unit: marks tests as unit tests (fast, no external dependencies)",
+]
+
+# Test filtering examples:
+# Run only unit tests (fast):           pytest -m "not integration and not slow"
+# Run only integration tests:           pytest -m integration  
+# Run only performance tests:           pytest -m performance
+# Skip slow tests:                      pytest -m "not slow"
+# Run all tests except integration:     pytest -m "not integration"
+
+addopts = [
+    "--strict-markers",     # Treat unknown markers as errors
+    "--tb=short",          # Shorter traceback format
+    "-ra",                 # Show extra test summary info for all except passed
+]
+
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "mypy>=1.16.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.0.0",
+    "ruff>=0.11.13",
+]
