@@ -59,7 +59,7 @@ class E2BMCPRunner:
             config: Server configuration
         """
         self.server_configs[config.name] = config
-        logger.info(f"Added MCP server config: {config.name}")
+        logger.debug(f"Added MCP server config: {config.name}")
 
     def add_server_from_dict(self, name: str, config_data: dict[str, Any]) -> None:
         """
@@ -94,7 +94,7 @@ class E2BMCPRunner:
 
         for name, config in validated_configs.items():
             self.server_configs[name] = config
-            logger.info(f"Added MCP server config: {name}")
+            logger.debug(f"Added MCP server config: {name}")
 
     def list_servers(self) -> list[str]:
         """List all configured server names."""
@@ -179,7 +179,7 @@ class E2BMCPRunner:
         try:
             # Create E2B sandbox (async)
             sandbox = await Sandbox.create(api_key=self.api_key)
-            logger.info(f"Created sandbox {sandbox.sandbox_id}")
+            logger.debug(f"Created sandbox {sandbox.sandbox_id}")
 
             # Set timeout
             await sandbox.set_timeout(config.timeout_minutes * 60)
@@ -231,7 +231,7 @@ class E2BMCPRunner:
                 # Convert to Tool objects
                 tools = [Tool.from_mcp_tool(tool_data, server_name) for tool_data in tools_data]
 
-                logger.info(f"Discovered {len(tools)} tools from {server_name}")
+                logger.debug(f"Discovered {len(tools)} tools from {server_name}")
                 return tools
 
             except Exception as e:
@@ -365,7 +365,7 @@ class E2BMCPRunner:
             # Cache tools in session
             session.tools = tools
 
-            logger.info(f"Discovered {len(tools)} tools from {session.server_name}")
+            logger.debug(f"Discovered {len(tools)} tools from {session.server_name}")
             return tools
 
         except Exception as e:
@@ -405,7 +405,7 @@ class E2BMCPRunner:
 
         # Install package if specified
         if config.package:
-            logger.info(f"Installing package: {config.package}")
+            logger.debug(f"Installing package: {config.package}")
             # Security: properly escape package name to prevent injection
             shlex.quote(config.package)
             install_code = f"""
@@ -431,7 +431,7 @@ print("Package installed successfully")
 
             env_code = "; ".join(env_commands)
             await sandbox.run_code(env_code)
-            logger.info(f"Set environment variables: {list(config.env.keys())}")
+            logger.debug(f"Set environment variables: {list(config.env.keys())}")
 
         # Extract file path from command
         cmd_parts = config.command.split()
@@ -448,7 +448,7 @@ print("Package installed successfully")
         # Some use stdio by default, some need --stdio flag, some use other conventions
         command = config.command
 
-        logger.info(f"Starting MCP server with command: {command}")
+        logger.debug(f"Starting MCP server with command: {command}")
         try:
             logger.debug(f"Executing command: {command}")
 
@@ -510,7 +510,7 @@ all_python = [line for line in lines if 'python' in line and 'test_mcp_server.py
 print(f"All MCP processes: {all_python}")
 """
                 )
-                logger.info(f"Process check result: {getattr(ps_result, 'stdout', '')}")
+                logger.debug(f"Process check result: {getattr(ps_result, 'stdout', '')}")
             except Exception as e:
                 logger.debug(f"Failed to check processes: {e}")
 
@@ -518,7 +518,7 @@ print(f"All MCP processes: {all_python}")
             await self._wait_for_server_ready(session, sandbox)
 
             session.initialized = True
-            logger.info(f"MCP server started successfully in session {session.session_id}")
+            logger.debug(f"MCP server started successfully in session {session.session_id}")
 
         except Exception as e:
             logger.error(f"Failed to start MCP server: {e}")
@@ -713,7 +713,7 @@ print("=== END DEBUG ===")
 
             # Close sandbox
             await sandbox.kill()
-            logger.info(f"Cleaned up session {session.session_id}")
+            logger.debug(f"Cleaned up session {session.session_id}")
 
         except Exception as e:
             logger.warning(f"Error during session cleanup: {e}")
