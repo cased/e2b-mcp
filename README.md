@@ -1,14 +1,15 @@
-# E2B MCP
+# e2b-mcp
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Run [MCP (Model Context Protocol)](https://github.com/modelcontextprotocol) servers securely in [E2B](https://e2b.dev) sandboxes.
 
-E2B MCP provides a simple way to execute MCP servers in isolated cloud environments, enabling safe execution of untrusted tools and code. Instead of running MCP servers directly on your host system, they run inside secure E2B sandboxes with automatic resource management and cleanup.
+e2b-mcp provides a simple way to execute MCP servers in isolated cloud environments, enabling safe execution of untrusted tools and code. Instead of running MCP servers directly on your host system, they run inside secure E2B sandboxes with automatic resource management and cleanup.
 
 ## Use Cases
 
-E2B MCP enables powerful scenarios by running MCP servers on behalf of users in secure environments:
+We built e2b-mcp so [Cased](https://cased.com) can run MCP servers on behalf of users, and 
+integrate with our DevOps agent. But e2b-mcp has many use cases:
 
 ### **AI Agent Platforms**
 - **Safe Tool Execution**: Let AI agents use file operations, git commands, and web APIs without compromising your infrastructure
@@ -334,7 +335,7 @@ async def advanced_usage():
 
 ## Supported MCP Servers
 
-E2B MCP works with any MCP server that supports the standard MCP protocol. Some popular servers include:
+e2b-mcp works with any MCP server that supports the standard MCP protocol. Some popular servers include:
 
 - **mcp-server-filesystem**: File system operations
 - **mcp-server-git**: Git repository management
@@ -344,7 +345,7 @@ E2B MCP works with any MCP server that supports the standard MCP protocol. Some 
 
 ## Security
 
-E2B MCP provides several layers of security:
+e2b-mcp provides several layers of security:
 
 1. **Sandbox Isolation**: All MCP servers run in isolated E2B sandboxes
 2. **Network Isolation**: Sandboxes have controlled network access
