@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "e2b-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Run MCP (Model Context Protocol) servers securely in E2B sandboxes"
 authors = [
     {name = "Cased", email = "team@cased.com"},
