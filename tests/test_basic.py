@@ -15,14 +15,14 @@ class TestServerConfig:
         config = ServerConfig(
             name="test",
             command="python test.py",
-            package="test-package",
+            install_commands=["pip install test-package"],
             description="Test server",
             timeout_minutes=15,
         )
 
         assert config.name == "test"
         assert config.command == "python test.py"
-        assert config.package == "test-package"
+        assert config.install_commands == ["pip install test-package"]
         assert config.description == "Test server"
         assert config.timeout_minutes == 15
 
@@ -30,7 +30,7 @@ class TestServerConfig:
         """Test creating ServerConfig from dictionary."""
         data = {
             "command": "python -m test_server",
-            "package": "test-server-package",
+            "install_commands": ["pip install test-server-package"],
             "description": "Test MCP server",
             "timeout_minutes": 20,
             "env": {"DEBUG": "1"},
@@ -40,7 +40,7 @@ class TestServerConfig:
 
         assert config.name == "test"
         assert config.command == "python -m test_server"
-        assert config.package == "test-server-package"
+        assert config.install_commands == ["pip install test-server-package"]
         assert config.description == "Test MCP server"
         assert config.timeout_minutes == 20
         assert config.env == {"DEBUG": "1"}
@@ -54,7 +54,7 @@ class TestServerConfig:
         assert data["name"] == "test"
         assert data["command"] == "python test.py"
         assert data["description"] == "Test server"
-        assert data["package"] == ""
+        assert data["install_commands"] == []
         assert data["timeout_minutes"] == 10
 
 

@@ -42,10 +42,10 @@ class ServerConfig:
 
     name: str
     command: str
-    package: str = ""  # Python package to install (optional)
     description: str = ""
     timeout_minutes: int = 10
     env: dict[str, str] = field(default_factory=dict)
+    install_commands: list[str] = field(default_factory=list)  # Installation commands
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -64,12 +64,13 @@ class ServerConfig:
                 "Server name must contain only alphanumeric characters, underscores, and hyphens"
             )
 
-        # Validate package name format if provided
-        if self.package and not re.match(r"^[a-zA-Z0-9_.-]+$", self.package):
-            raise ValueError(
-                "Package name must contain only alphanumeric characters, "
-                "dots, underscores, and hyphens"
-            )
+        # Validate install_commands
+        if not isinstance(self.install_commands, list):
+            raise ValueError("install_commands must be a list")
+
+        for i, cmd in enumerate(self.install_commands):
+            if not isinstance(cmd, str):
+                raise ValueError(f"install_commands[{i}] must be a string")
 
     @classmethod
     def from_dict(cls, name: str, data: dict[str, Any]) -> "ServerConfig":
@@ -83,10 +84,10 @@ class ServerConfig:
         return cls(
             name=name,
             command=data["command"],
-            package=data.get("package", ""),
             description=data.get("description", ""),
             timeout_minutes=data.get("timeout_minutes", 10),
             env=data.get("env", {}),
+            install_commands=data.get("install_commands", []),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -94,15 +95,15 @@ class ServerConfig:
         return {
             "name": self.name,
             "command": self.command,
-            "package": self.package,
             "description": self.description,
             "timeout_minutes": self.timeout_minutes,
             "env": self.env,
+            "install_commands": self.install_commands,
         }
 
-    def is_package_required(self) -> bool:
-        """Check if this server requires package installation."""
-        return bool(self.package.strip())
+    def requires_installation(self) -> bool:
+        """Check if this server requires installation commands to be run."""
+        return bool(self.install_commands)
 
     def get_display_name(self) -> str:
         """Get a human-readable display name for the server."""

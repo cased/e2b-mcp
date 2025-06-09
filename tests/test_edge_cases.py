@@ -27,7 +27,7 @@ class TestEdgeCases:
         # Minimal server config
         minimal_config = ServerConfig(name="minimal", command="echo hello")
         runner.add_server(minimal_config)
-        assert minimal_config.package == ""
+        assert minimal_config.install_commands == []
         assert minimal_config.description == ""
         assert minimal_config.env == {}
 

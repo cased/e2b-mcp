@@ -121,12 +121,12 @@ class E2BMCPRunner:
         return {
             "name": config.name,
             "command": config.command,
-            "package": config.package,
             "description": config.description,
             "timeout_minutes": config.timeout_minutes,
-            "package_required": config.is_package_required(),
+            "requires_installation": config.requires_installation(),
             "display_name": config.get_display_name(),
             "env_vars": list(config.env.keys()),
+            "install_commands": config.install_commands,
         }
 
     def list_active_sessions(self) -> list[dict[str, Any]]:
@@ -403,21 +403,43 @@ class E2BMCPRunner:
         """Setup MCP server in the sandbox."""
         config = session.config
 
-        # Install package if specified
-        if config.package:
-            logger.debug(f"Installing package: {config.package}")
-            # Security: properly escape package name to prevent injection
-            shlex.quote(config.package)
-            install_code = f"""
+        # Run installation commands if specified
+        if config.install_commands:
+            logger.debug(f"Running {len(config.install_commands)} installation commands")
+            for i, command in enumerate(config.install_commands):
+                logger.debug(f"Installing [{i + 1}/{len(config.install_commands)}]: {command}")
+
+                # Security: properly escape the command
+                escaped_command = shlex.quote(command)
+                install_code = f"""
 import subprocess
 import sys
-result = subprocess.run([sys.executable, '-m', 'pip', 'install', '{config.package}'],
-                       capture_output=True, text=True, check=True)
-print("Package installed successfully")
+import os
+
+# Run the installation command
+result = subprocess.run({escaped_command}, shell=True, capture_output=True, text=True, check=False)
+
+print(f"Command: {command}")
+print(f"Exit code: {{result.returncode}}")
+print(f"Stdout: {{result.stdout}}")
+if result.stderr:
+    print(f"Stderr: {{result.stderr}}")
+
+if result.returncode != 0:
+    raise Exception(f"Installation cmd failed with code {{result.returncode}}: {{result.stderr}}")
+else:
+    print("Installation command completed successfully")
 """
-            result = await sandbox.run_code(install_code)
-            if result.error:
-                raise MCPError(f"Failed to install package {config.package}: {result.error}")
+                result = await sandbox.run_code(install_code)
+                if result.error:
+                    raise MCPError(f"Failed to run install command '{command}': {result.error}")
+
+                # Check if the command output indicates an error
+                stdout = getattr(result, "stdout", "")
+                if "Installation command failed" in stdout:
+                    raise MCPError(f"Install command '{command}' failed")
+
+                logger.debug(f"Successfully completed install command: {command}")
 
         # No file-based communication needed in stdio mode
 
