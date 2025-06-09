@@ -107,7 +107,7 @@ class TestServerManagement:
         assert config["test"]["timeout_minutes"] == 10
 
     def test_server_add_with_options(self, runner, temp_config_dir):
-        """Test adding a server with all options."""
+        """Test adding server with all options."""
         result = runner.invoke(
             cli,
             [
@@ -120,8 +120,8 @@ class TestServerManagement:
                 "TOKEN=abc123",
                 "--env",
                 "DEBUG=1",
-                "--package",
-                "github-mcp",
+                "--install-commands",
+                "npm install github-mcp",
                 "--description",
                 "GitHub server",
                 "--timeout",
@@ -132,6 +132,7 @@ class TestServerManagement:
         assert result.exit_code == 0
         assert "✅ Added server 'github'" in result.output
         assert "Environment: ['TOKEN', 'DEBUG']" in result.output
+        assert "Install commands: 1 commands" in result.output
 
         # Check config
         config_file = temp_config_dir / "servers.json"
@@ -141,7 +142,7 @@ class TestServerManagement:
         github_config = config["github"]
         assert github_config["command"] == "npx server-github"
         assert github_config["env"] == {"TOKEN": "abc123", "DEBUG": "1"}
-        assert github_config["package"] == "github-mcp"
+        assert github_config["install_commands"] == ["npm install github-mcp"]
         assert github_config["description"] == "GitHub server"
         assert github_config["timeout_minutes"] == 15
 

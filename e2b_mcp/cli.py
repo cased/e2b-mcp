@@ -96,14 +96,14 @@ def server() -> None:
 @click.argument("name")
 @click.option("--command", required=True, help="Command to run the MCP server")
 @click.option("--env", multiple=True, help="Environment variables (format: KEY=VALUE)")
-@click.option("--package", help="Python package to install")
+@click.option("--install-commands", multiple=True, help="Installation commands to run")
 @click.option("--description", help="Server description")
 @click.option("--timeout", default=10, help="Timeout in minutes (default: 10)")
 def server_add(
     name: str,
     command: str,
     env: tuple[str, ...],
-    package: str | None,
+    install_commands: tuple[str, ...],
     description: str | None,
     timeout: int,
 ) -> None:
@@ -120,10 +120,13 @@ def server_add(
         env_dict[key] = value
 
     # Create server config
-    server_config = {"command": command, "env": env_dict, "timeout_minutes": timeout}
+    server_config = {
+        "command": command,
+        "env": env_dict,
+        "timeout_minutes": timeout,
+        "install_commands": list(install_commands),
+    }
 
-    if package:
-        server_config["package"] = package
     if description:
         server_config["description"] = description
 
@@ -136,6 +139,8 @@ def server_add(
     click.echo(f"   Command: {command}")
     if env_dict:
         click.echo(f"   Environment: {list(env_dict.keys())}")
+    if install_commands:
+        click.echo(f"   Install commands: {len(install_commands)} commands")
 
 
 @server.command("list")
@@ -161,8 +166,9 @@ def server_list(output_json: bool) -> None:
         click.echo(f"   Command: {server_config['command']}")
         if server_config.get("description"):
             click.echo(f"   Description: {server_config['description']}")
-        if server_config.get("package"):
-            click.echo(f"   Package: {server_config['package']}")
+        if server_config.get("install_commands"):
+            install_cmds = server_config["install_commands"]
+            click.echo(f"   Install commands: {len(install_cmds)} commands")
         if server_config.get("env"):
             click.echo(f"   Environment: {list(server_config['env'].keys())}")
         click.echo(f"   Timeout: {server_config.get('timeout_minutes', 10)} minutes")

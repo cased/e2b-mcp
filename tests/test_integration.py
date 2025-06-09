@@ -252,7 +252,7 @@ class TestE2BMCPWithPackageInstallation:
             ServerConfig(
                 name="requests_server",
                 command="python -c 'import requests; print(\"Requests package available\")'",
-                package="requests",
+                install_commands=["pip install requests"],
                 description="Test server with package dependency",
                 timeout_minutes=3,
             )

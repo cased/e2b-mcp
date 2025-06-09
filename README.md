@@ -76,6 +76,21 @@ e2b-mcp tools execute github search_repositories \
 # Quick one-shot execution (no config save)
 e2b-mcp quick "npx -y @modelcontextprotocol/server-filesystem /tmp" \
   list_directory --param path=/tmp
+
+# Multi-package installation with install-commands
+e2b-mcp server add complex_server \
+  --command "python /app/server.py" \
+  --install-commands "apt-get update" \
+  --install-commands "apt-get install -y git curl" \
+  --install-commands "pip install requests beautifulsoup4" \
+  --env DATA_DIR=/app/data
+
+# Node.js MCP server setup
+e2b-mcp server add nodejs_fs \
+  --command "node filesystem-server.js" \
+  --install-commands "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -" \
+  --install-commands "apt-get install -y nodejs" \
+  --install-commands "npm install @modelcontextprotocol/server-filesystem"
 ```
 
 ### Python API
@@ -129,7 +144,7 @@ e2b-mcp server remove <name> [--yes]
 **Add Server Options:**
 - `--command`: Command to run the MCP server (required)
 - `--env KEY=VALUE`: Environment variables (can be used multiple times)
-- `--package`: Python package to install
+- `--install-commands`: Installation commands to run (can be used multiple times)
 - `--description`: Server description
 - `--timeout`: Timeout in minutes (default: 10)
 
@@ -215,7 +230,12 @@ from e2b_mcp import ServerConfig
 config = ServerConfig(
     name="my_server",
     command="python -m my_mcp_server --stdio",
-    package="my-mcp-server-package",  # Optional
+    install_commands=[  # Installation commands for any package manager
+        "apt-get update",
+        "apt-get install -y nodejs npm",
+        "npm install express",
+        "pip install additional-package"
+    ],
     description="My custom MCP server",
     timeout_minutes=10,
     env={"DEBUG": "1"}  # Optional environment variables
@@ -225,10 +245,35 @@ runner.add_server(config)
 # Method 2: Using dictionary
 runner.add_server_from_dict("my_server", {
     "command": "python -m my_mcp_server --stdio",
-    "package": "my-mcp-server-package",
+    "install_commands": [
+        "pip install requests beautifulsoup4",
+        "apt-get install -y curl"
+    ],
     "description": "My custom MCP server",
     "timeout_minutes": 10,
     "env": {"DEBUG": "1"}
+})
+
+# Example: Node.js MCP server
+runner.add_server_from_dict("nodejs_server", {
+    "command": "node mcp-server.js",
+    "install_commands": [
+        "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -",
+        "sudo apt-get install -y nodejs",
+        "npm install @modelcontextprotocol/server-filesystem"
+    ],
+    "description": "Node.js MCP server"
+})
+
+# Example: Rust MCP server
+runner.add_server_from_dict("rust_server", {
+    "command": "./target/release/mcp-server",
+    "install_commands": [
+        "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+        "source ~/.cargo/env",
+        "cargo build --release"
+    ],
+    "description": "Rust-based MCP server"
 })
 ```
 
@@ -236,7 +281,7 @@ runner.add_server_from_dict("my_server", {
 
 - **name**: Unique identifier for the MCP server
 - **command**: Command to start the MCP server
-- **package**: Python package to install (optional)
+- **install_commands**: Flexible installation commands (optional)
 - **description**: Human-readable description
 - **timeout_minutes**: Sandbox timeout (default: 10 minutes)
 - **env**: Environment variables (optional)
@@ -535,3 +580,81 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [MCP (Model Context Protocol)](https://github.com/modelcontextprotocol) - The protocol this library implements
 - [E2B](https://e2b.dev) - Secure cloud sandboxes for AI
 - [MCP Servers](https://github.com/modelcontextprotocol/servers) - Official MCP server implementations
+
+## Package Management
+
+e2b-mcp supports flexible package installation across different ecosystems using `install_commands`:
+
+### Installation Commands
+```python
+
+runner.add_server(ServerConfig(
+    name="multi_lang_server",
+    command="node server.js",
+    install_commands=[
+        # System packages
+        "apt-get update",
+        "apt-get install -y build-essential",
+        # Node.js ecosystem
+        "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -",
+        "apt-get install -y nodejs",
+        "npm install express @modelcontextprotocol/server-filesystem",
+        # Python packages
+        "pip install requests beautifulsoup4",
+        # Custom setup
+        "mkdir -p /app/data",
+        "chmod 755 /app/data"
+    ]
+))
+```
+
+### Package Manager Examples
+
+#### Node.js/npm
+```python
+runner.add_server_from_dict("nodejs_mcp", {
+    "command": "node mcp-server.js",
+    "install_commands": [
+        "apt-get update",
+        "apt-get install -y nodejs npm",
+        "npm install express sqlite3"
+    ]
+})
+```
+
+#### Python with pip
+```python
+runner.add_server_from_dict("python_mcp", {
+    "command": "python server.py",
+    "install_commands": [
+        "pip install --upgrade pip",
+        "pip install fastapi uvicorn pandas numpy"
+    ]
+})
+```
+
+#### Rust with cargo
+```python
+runner.add_server_from_dict("rust_mcp", {
+    "command": "./target/release/mcp-server",
+    "install_commands": [
+        "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+        "source ~/.cargo/env",
+        "cargo build --release"
+    ]
+})
+```
+
+#### System Dependencies
+```python
+runner.add_server_from_dict("system_mcp", {
+    "command": "python git_server.py",
+    "install_commands": [
+        "apt-get update",
+        "apt-get install -y git curl wget",
+        "pip install gitpython"
+    ]
+})
+```
+
+## Configuration

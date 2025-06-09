@@ -1,11 +1,7 @@
 """
-Tests for validation features in e2b-mcp.
+Validation tests for e2b-mcp package.
 
-This module tests all the new validation features including:
-- Server configuration validation
-- Tool parameter validation
-- Error handling and context
-- Input sanitization
+Tests for proper validation of server configurations, tools, and error handling.
 """
 
 import pytest
@@ -14,28 +10,27 @@ from e2b_mcp import E2BMCPRunner, MCPError, ServerConfig, Tool
 
 
 class TestServerConfigValidation:
-    """Test server configuration validation."""
+    """Test ServerConfig validation features."""
 
     def test_valid_server_config(self):
-        """Test creating valid server configurations."""
-        # Basic valid config
-        config = ServerConfig(
-            name="test_server", command="python test.py", description="Test server"
-        )
-        assert config.name == "test_server"
-        assert config.command == "python test.py"
-        assert config.timeout_minutes == 10  # default
+        """Test valid server configurations."""
+        # Minimal config
+        config_minimal = ServerConfig(name="minimal_server", command="python test.py")
+        assert config_minimal.name == "minimal_server"
+        assert config_minimal.command == "python test.py"
+        assert config_minimal.install_commands == []
+        assert config_minimal.description == ""
 
-        # Config with all fields
+        # Full config
         config_full = ServerConfig(
             name="full_server",
             command="python -m server --stdio",
-            package="test-package",
+            install_commands=["pip install test-package"],
             description="Full test server",
             timeout_minutes=15,
             env={"DEBUG": "1", "API_KEY": "test"},
         )
-        assert config_full.package == "test-package"
+        assert config_full.install_commands == ["pip install test-package"]
         assert config_full.timeout_minutes == 15
         assert config_full.env["DEBUG"] == "1"
 
@@ -133,71 +128,28 @@ class TestServerConfigValidation:
         with pytest.raises(ValueError, match="Timeout must be a positive integer"):
             ServerConfig(name="test", command="python test.py", timeout_minutes=5.5)
 
-    def test_invalid_package_names(self):
-        """Test package name validation."""
-        invalid_packages = [
-            "package with spaces",
-            "package!",
-            "package@",
-            "package#",
-            "package$",
-            "package%",
-            "package^",
-            "package&",
-            "package*",
-            "package()",
-            "package=",
-            "package+",
-            "package[",
-            "package]",
-            "package{",
-            "package}",
-            "package\\",
-            "package|",
-            "package;",
-            "package:",
-            "package'",
-            'package"',
-            "package<",
-            "package>",
-            "package,",
-            "package?",
-            "package/",
-        ]
+    def test_install_commands_validation(self):
+        """Test install_commands validation."""
+        # Valid install commands
+        config = ServerConfig(
+            name="test", command="test", install_commands=["pip install requests", "apt-get update"]
+        )
+        assert len(config.install_commands) == 2
 
-        for invalid_package in invalid_packages:
-            with pytest.raises(ValueError, match="Package name must contain only alphanumeric"):
-                ServerConfig(name="test", command="python test.py", package=invalid_package)
+        # Should reject non-list
+        with pytest.raises(ValueError, match="install_commands must be a list"):
+            ServerConfig(name="test", command="test", install_commands="not a list")  # type: ignore
 
-    def test_valid_package_names(self):
-        """Test valid package name formats."""
-        valid_packages = [
-            "",  # Empty is allowed
-            "package",
-            "package1",
-            "package_1",
-            "package-1",
-            "package.name",
-            "my-package",
-            "my_package",
-            "my.package",
-            "package.with.dots",
-            "package-with-dashes",
-            "package_with_underscores",
-            "123package",
-            "PACKAGE",
-        ]
-
-        for valid_package in valid_packages:
-            config = ServerConfig(name="test", command="python test.py", package=valid_package)
-            assert config.package == valid_package
+        # Should reject non-string elements
+        with pytest.raises(ValueError, match="install_commands\\[0\\] must be a string"):
+            ServerConfig(name="test", command="test", install_commands=[123])  # type: ignore
 
     def test_from_dict_validation(self):
         """Test ServerConfig.from_dict validation."""
         # Valid dict
         data = {
             "command": "python test.py",
-            "package": "test-package",
+            "install_commands": ["pip install test-package"],
             "description": "Test",
             "timeout_minutes": 5,
             "env": {"TEST": "1"},
@@ -208,7 +160,7 @@ class TestServerConfigValidation:
 
         # Missing command
         with pytest.raises(ValueError, match="Configuration must include 'command' field"):
-            ServerConfig.from_dict("test", {"package": "test"})
+            ServerConfig.from_dict("test", {"install_commands": ["pip install test"]})
 
         # Non-dict data
         with pytest.raises(ValueError, match="Configuration data must be a dictionary"):
@@ -220,14 +172,16 @@ class TestServerConfigValidation:
 
     def test_utility_methods(self):
         """Test ServerConfig utility methods."""
-        # Config without package
-        config_no_pkg = ServerConfig(name="test", command="python test.py")
-        assert not config_no_pkg.is_package_required()
-        assert config_no_pkg.get_display_name() == "test"
+        # Config without installation
+        config_no_install = ServerConfig(name="test", command="python test.py")
+        assert not config_no_install.requires_installation()
+        assert config_no_install.get_display_name() == "test"
 
-        # Config with package
-        config_with_pkg = ServerConfig(name="test", command="python test.py", package="my-package")
-        assert config_with_pkg.is_package_required()
+        # Config with installation
+        config_with_install = ServerConfig(
+            name="test", command="python test.py", install_commands=["pip install my-package"]
+        )
+        assert config_with_install.requires_installation()
 
         # Config with description
         config_with_desc = ServerConfig(
@@ -235,13 +189,13 @@ class TestServerConfigValidation:
         )
         assert config_with_desc.get_display_name() == "My awesome server"
 
-        # Config with empty package should work fine
-        config_empty_pkg = ServerConfig(
+        # Config with empty install_commands should work fine
+        config_empty_install = ServerConfig(
             name="test",
             command="python test.py",
-            package="",  # Empty string instead of whitespace
+            install_commands=[],
         )
-        assert not config_empty_pkg.is_package_required()
+        assert not config_empty_install.requires_installation()
 
 
 class TestToolValidation:
@@ -472,7 +426,7 @@ class TestRunnerValidation:
             "server1": {"command": "python server1.py", "description": "First server"},
             "server2": {
                 "command": "python server2.py",
-                "package": "test-package",
+                "install_commands": ["pip install test-package"],
                 "timeout_minutes": 15,
             },
         }
@@ -489,7 +443,7 @@ class TestRunnerValidation:
         assert config1.description == "First server"
 
         config2 = runner.get_server_config("server2")
-        assert config2.package == "test-package"
+        assert config2.install_commands == ["pip install test-package"]
         assert config2.timeout_minutes == 15
 
     def test_server_info_method(self):
@@ -499,7 +453,7 @@ class TestRunnerValidation:
         config = ServerConfig(
             name="test_server",
             command="python test.py",
-            package="test-package",
+            install_commands=["pip install test-package"],
             description="Test server",
             timeout_minutes=20,
             env={"DEBUG": "1", "API_KEY": "test"},
@@ -510,10 +464,10 @@ class TestRunnerValidation:
         assert info is not None
         assert info["name"] == "test_server"
         assert info["command"] == "python test.py"
-        assert info["package"] == "test-package"
+        assert info["install_commands"] == ["pip install test-package"]
         assert info["description"] == "Test server"
         assert info["timeout_minutes"] == 20
-        assert info["package_required"] is True
+        assert info["requires_installation"] is True
         assert info["display_name"] == "Test server"
         assert set(info["env_vars"]) == {"DEBUG", "API_KEY"}
 
