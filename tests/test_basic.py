@@ -56,6 +56,40 @@ class TestServerConfig:
         assert data["description"] == "Test server"
         assert data["install_commands"] == []
         assert data["timeout_minutes"] == 10
+        assert data["initialization_timeout"] == 30  # Default value
+
+    def test_initialization_timeout_default(self):
+        """Test that initialization_timeout defaults to 30 seconds."""
+        config = ServerConfig(name="test", command="python test.py")
+        assert config.initialization_timeout == 30
+
+    def test_initialization_timeout_custom(self):
+        """Test setting custom initialization_timeout."""
+        config = ServerConfig(name="test", command="python test.py", initialization_timeout=60)
+        assert config.initialization_timeout == 60
+
+    def test_from_dict_with_initialization_timeout(self):
+        """Test creating ServerConfig from dictionary with initialization_timeout."""
+        data = {
+            "command": "python -m kit.mcp",
+            "description": "Kit MCP server",
+            "initialization_timeout": 45,
+        }
+
+        config = ServerConfig.from_dict("kit", data)
+
+        assert config.name == "kit"
+        assert config.initialization_timeout == 45
+
+    def test_from_dict_without_initialization_timeout(self):
+        """Test that initialization_timeout defaults when not in dict."""
+        data = {
+            "command": "python test.py",
+            "description": "Test server",
+        }
+
+        config = ServerConfig.from_dict("test", data)
+        assert config.initialization_timeout == 30  # Default value
 
 
 class TestTool:

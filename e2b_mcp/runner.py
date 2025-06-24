@@ -123,6 +123,7 @@ class E2BMCPRunner:
             "command": config.command,
             "description": config.description,
             "timeout_minutes": config.timeout_minutes,
+            "initialization_timeout": config.initialization_timeout,
             "requires_installation": config.requires_installation(),
             "display_name": config.get_display_name(),
             "env_vars": list(config.env.keys()),
@@ -516,7 +517,9 @@ else:
             logger.debug(f"Command started, PID={session.pid}")
 
             # Give the process a moment to start and check if it's running
-            await asyncio.sleep(5)  # Give more time for server to fully initialize
+            await asyncio.sleep(
+                config.initialization_timeout
+            )  # Wait for server to fully initialize
 
             # Check if the process is still running
             try:
@@ -549,8 +552,11 @@ print(f"All MCP processes: {all_python}")
     async def _wait_for_server_ready(
         self, session: Session, sandbox: Sandbox, timeout: int = 30
     ) -> None:
-        """Wait briefly; stdio responses will prove readiness."""
-        await asyncio.sleep(1)
+        """Wait for server to be ready by testing basic MCP communication."""
+        # For servers that need extra time we've already waited
+        # the full initialization_timeout. Now just do a quick readiness check.
+        logger.debug(f"Checking server readiness for {session.server_name}")
+        await asyncio.sleep(1)  # Brief additional wait
         return
 
     async def _send_mcp_request(

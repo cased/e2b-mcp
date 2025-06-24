@@ -46,6 +46,7 @@ class ServerConfig:
     timeout_minutes: int = 10
     env: dict[str, str] = field(default_factory=dict)
     install_commands: list[str] = field(default_factory=list)  # Installation commands
+    initialization_timeout: int = 30  # Seconds to wait for server initialization
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -57,6 +58,9 @@ class ServerConfig:
 
         if not isinstance(self.timeout_minutes, int) or self.timeout_minutes <= 0:
             raise ValueError("Timeout must be a positive integer")
+
+        if not isinstance(self.initialization_timeout, int) or self.initialization_timeout <= 0:
+            raise ValueError("Initialization timeout must be a positive integer")
 
         # Validate server name format (alphanumeric, underscore, hyphen only)
         if not re.match(r"^[a-zA-Z0-9_-]+$", self.name):
@@ -88,6 +92,7 @@ class ServerConfig:
             timeout_minutes=data.get("timeout_minutes", 10),
             env=data.get("env", {}),
             install_commands=data.get("install_commands", []),
+            initialization_timeout=data.get("initialization_timeout", 30),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -99,6 +104,7 @@ class ServerConfig:
             "timeout_minutes": self.timeout_minutes,
             "env": self.env,
             "install_commands": self.install_commands,
+            "initialization_timeout": self.initialization_timeout,
         }
 
     def requires_installation(self) -> bool:

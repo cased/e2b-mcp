@@ -128,6 +128,33 @@ class TestServerConfigValidation:
         with pytest.raises(ValueError, match="Timeout must be a positive integer"):
             ServerConfig(name="test", command="python test.py", timeout_minutes=5.5)
 
+    def test_invalid_initialization_timeout(self):
+        """Test initialization_timeout validation."""
+        # Zero initialization_timeout
+        with pytest.raises(ValueError, match="Initialization timeout must be a positive integer"):
+            ServerConfig(name="test", command="python test.py", initialization_timeout=0)
+
+        # Negative initialization_timeout
+        with pytest.raises(ValueError, match="Initialization timeout must be a positive integer"):
+            ServerConfig(name="test", command="python test.py", initialization_timeout=-1)
+
+        # Non-integer initialization_timeout
+        with pytest.raises(ValueError, match="Initialization timeout must be a positive integer"):
+            ServerConfig(name="test", command="python test.py", initialization_timeout=5.5)
+
+    def test_valid_initialization_timeouts(self):
+        """Test valid initialization_timeout values."""
+        # Default value
+        config_default = ServerConfig(name="test", command="python test.py")
+        assert config_default.initialization_timeout == 30
+
+        # Custom values
+        for timeout in [1, 5, 30, 60, 120, 300]:
+            config = ServerConfig(
+                name="test", command="python test.py", initialization_timeout=timeout
+            )
+            assert config.initialization_timeout == timeout
+
     def test_install_commands_validation(self):
         """Test install_commands validation."""
         # Valid install commands
@@ -456,6 +483,7 @@ class TestRunnerValidation:
             install_commands=["pip install test-package"],
             description="Test server",
             timeout_minutes=20,
+            initialization_timeout=45,
             env={"DEBUG": "1", "API_KEY": "test"},
         )
         runner.add_server(config)
@@ -467,6 +495,7 @@ class TestRunnerValidation:
         assert info["install_commands"] == ["pip install test-package"]
         assert info["description"] == "Test server"
         assert info["timeout_minutes"] == 20
+        assert info["initialization_timeout"] == 45
         assert info["requires_installation"] is True
         assert info["display_name"] == "Test server"
         assert set(info["env_vars"]) == {"DEBUG", "API_KEY"}
